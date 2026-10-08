@@ -22,6 +22,9 @@ const en = {
   dateLocale: 'en-CA', // YYYY-MM-DD
   parkPage: 'Previous components (temporary)',
   inbox: 'New screens',
+  // the boards of the Components page, in this order (SKILL.md, step 1); other names go after
+  stages: ['App structure', 'Navigation', 'Actions', 'Forms and search', 'Tables and lists', 'Sections and cards',
+    'Charts and timelines', 'Status and feedback', 'Menus and overlays', 'Notices and detail', 'Chat', 'Identity'],
   iconsBoard: { name: 'Icons', desc: "The prototype's glyphs as components" },
   usesOnScreens: (uses, screens) => `${plural(uses, 'use', 'uses')} on ${plural(screens, 'screen', 'screens')}`,
   boardDesc: { modes: "Light and dark mode, bound to the file's variables", single: "Bound to the file's variables" },
@@ -182,6 +185,8 @@ const es = {
   dateLocale: 'es', // DD/MM/YYYY
   parkPage: 'Componentes anteriores (temporal)',
   inbox: 'Pantallas nuevas',
+  stages: ['Estructura de la app', 'Navegación', 'Acciones', 'Formularios y búsqueda', 'Tablas y listas', 'Secciones y tarjetas',
+    'Gráficos y líneas de tiempo', 'Estado y feedback', 'Menús y superposiciones', 'Avisos y detalle', 'Chat', 'Identidad'],
   iconsBoard: { name: 'Íconos', desc: 'Los glifos del prototipo como componentes' },
   usesOnScreens: (uses, screens) => `${uses} usos en ${plural(screens, 'pantalla', 'pantallas')}`,
   boardDesc: { modes: 'Modo claro y oscuro, ligados a las variables del archivo', single: 'Ligado a las variables del archivo' },
@@ -336,6 +341,17 @@ export function labelsFor(state) {
   const lang = (state && state.options && state.options.docsLanguage) || 'en';
   if (!LANGS[lang]) throw new Error(`docsLanguage "${lang}" is not supported; use one of: ${Object.keys(LANGS).join(', ')}`);
   return LANGS[lang];
+}
+
+// The adapter's stages in board order: the known names first, in the canonical order of the
+// docs language (either language's name is recognized), then any other name in adapter order.
+export function orderStages(L, names) {
+  const norm = (n) => String(n).trim().toLowerCase();
+  const rank = (n) => {
+    for (const lang of [L, ...Object.values(LANGS)]) { const i = lang.stages.map(norm).indexOf(norm(n)); if (i >= 0) return i; }
+    return Infinity;
+  };
+  return [...new Set(names)].map((n, k) => [n, k]).sort((a, b) => (rank(a[0]) - rank(b[0])) || (a[1] - b[1])).map(([n]) => n);
 }
 
 // The foundation topics in board order: the names foundation-board.js gives the sections and the

@@ -9,7 +9,7 @@ const PARAMS = /*PARAMS*/ { frames: {} } /*END*/;
 // frames: { "<frame id>": [[x, y, w, 'r'|'c', text], …] }  content box relative to the frame
 
 const norm = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
-const out = { fixed: 0, already: 0, unmatched: 0 };
+const out = { fixed: 0, already: 0, unmatched: 0, missed: [] };
 for (const [fid, boxes] of Object.entries(PARAMS.frames)) {
   const frame = await figma.getNodeByIdAsync(fid);
   if (!frame || !boxes.length) continue;
@@ -21,7 +21,8 @@ for (const [fid, boxes] of Object.entries(PARAMS.frames)) {
     const want = norm(tx).slice(0, 14);
     const hit = texts.filter((k) => k.x > x - 2.5 && k.x < x + w && Math.abs(k.y - y) < 5 && norm(k.t.characters).startsWith(want))
       .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
-    if (!hit) { out.unmatched++; continue; }
+    // say which: an unmatched box keeps the capture's left-packed text (check it in the review)
+    if (!hit) { out.unmatched++; if (out.missed.length < 20) out.missed.push({ frame: fid, text: tx.slice(0, 40), at: [Math.round(x), Math.round(y)] }); continue; }
     const t = hit.t;
     // glyphs as wide as the box have nothing to align: a fixed box there wraps a longer text in
     // the instances (a tab's one-digit count box split "22" over two lines)

@@ -179,7 +179,11 @@ component.
   container, the container is a component too** (sidebar, header, toolbar, canvas, panels, sections,
   cards). What only distributes space (no background, border or shadow) stays as auto layout inside
   the screen.
-- **Each entry**: `{ ui, sel, kind, stage, props, slots, list }`.
+- **Each entry**: `{ ui, sel, kind, stage, props, slots, list }`. The other adapter keys and the
+  flow table: `references/contract.md`.
+- **Scope**: the adapter lists only what the screens in scope show (plus specimens). An adapter
+  started from another project's carries its components, `name`, `summary` and `glossary`: drop
+  what these screens do not have and rewrite those three — they are printed on the cover.
 
 | `kind` | What it is | How it is built |
 |---|---|---|
@@ -191,7 +195,9 @@ component.
 - **`stage`** groups the components into the boards of the Components page, in this order: App
   structure, Navigation, Actions, Forms and search, Tables and lists, Sections and cards, Charts and
   timelines, Status and feedback, Menus and overlays, Notices and detail, Chat, Identity; Icons last.
-  Write the stage names in `docsLanguage`. Each table goes on the same board as its row.
+  Write the stage names in `docsLanguage`, with these exact names (`stages` in `scripts/lib/labels.mjs`;
+  in Spanish: Estructura de la app, Navegación, Acciones…) so the boards come out in this order; any
+  other name goes after them. Each table goes on the same board as its row.
 - **Real selectors**: a layer name can come from a section or an id, not a class. Verify every
   selector in the browser; the census must give each component the same number of occurrences as
   the inventory.

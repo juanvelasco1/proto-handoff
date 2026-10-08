@@ -90,3 +90,44 @@ test('reconcile-captures never wipes a table that has captures with a scan that 
   assert.match(r.stderr, /left as it was/);
   assert.deepEqual(json(out), { 'a/home': '7:2' });
 });
+
+function auditDir(name, { screens = {}, planFrames = null } = {}) {
+  const d = path.join(tmp, name);
+  mkdirSync(path.join(d, 'map'), { recursive: true });
+  writeFileSync(path.join(d, 'adapter.json'), JSON.stringify({ components: [{ ui: 'Button', sel: '.btn', kind: 'atom', stage: 'Actions' }] }));
+  writeFileSync(path.join(d, 'state.json'), JSON.stringify({ adapter: 'adapter.json', maps: 'map', screens,
+    pages: { cover: '0:1', foundations: '1:2', components: '1:3', screens: '1:4', flows: '1:5' } }));
+  writeFileSync(path.join(d, 'map', '01-a_home.json'), JSON.stringify({ screen: 'a/home', nodes: [
+    { r: [0, 0, 100, 100], d: 0, name: 'root' }, { r: [10, 10, 20, 10], d: 1, ui: 'Button', name: 'Button' }] }));
+  if (planFrames) { mkdirSync(path.join(d, 'next'), { recursive: true }); writeFileSync(path.join(d, 'next', 'plan.json'), JSON.stringify({ frames: planFrames })); }
+  return d;
+}
+
+test('audit: a first build audits the screens still waiting in next/plan.json', () => {
+  const d = auditDir('audit-first', { planFrames: { 'a/home': { frame: '7:2' } } });
+  const out = path.join(d, 'audit');
+  const r = node('audit.mjs', ['prepare', d, path.join(d, 'map'), out]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(JSON.parse(r.stdout).screens, 1);
+  assert.deepEqual(json(path.join(out, 'expect.json')), { screens: ['7:2'], unframed: [] });
+});
+
+test('audit: the report fails when a screen of the maps was not audited', () => {
+  const d = auditDir('audit-gap');
+  const out = path.join(d, 'audit');
+  assert.equal(node('audit.mjs', ['prepare', d, path.join(d, 'map'), out]).status, 0);
+  mkdirSync(path.join(out, 'results'), { recursive: true });
+  writeFileSync(path.join(out, 'results', 'A1-components.json'), JSON.stringify({ checks: [{ id: 'inventory', ok: true }] }));
+  const r = node('audit.mjs', ['report', d, out]);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /covers every screen of the maps \| FAIL/);
+  assert.match(r.stdout, /a\/home: no frame known/);
+});
+
+test('stages: the Components boards follow the canonical order, other names after', async () => {
+  const { LANGS, orderStages } = await import('../skills/proto-handoff/scripts/lib/labels.mjs');
+  assert.deepEqual(orderStages(LANGS.es, ['Chat', 'Mi tablero', 'Navegación', 'Estructura de la app', 'Chat']),
+    ['Estructura de la app', 'Navegación', 'Chat', 'Mi tablero']);
+  // a name in the other language is still recognized
+  assert.deepEqual(orderStages(LANGS.en, ['Identity', 'Navegación', 'App structure']), ['App structure', 'Navegación', 'Identity']);
+});

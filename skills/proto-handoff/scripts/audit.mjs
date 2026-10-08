@@ -17,13 +17,17 @@
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { labelsFor, topicOrder } from './lib/labels.mjs';
+import { labelsFor, topicOrder, orderStages } from './lib/labels.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const [cmd, work, a3, a4] = process.argv.slice(2);
 const W = (...p) => path.join(work, ...p);
 const state = JSON.parse(readFileSync(W('state.json'), 'utf8'));
 const adapter = JSON.parse(readFileSync(W(state.adapter), 'utf8'));
+// screens new in this run are in next/plan.json (frames) until promote stores them in state.json:
+// without them the first build's audit would check no screen at all
+const planFile = W('next', 'plan.json');
+const SCREENS = { ...(existsSync(planFile) ? JSON.parse(readFileSync(planFile, 'utf8')).frames || {} : {}), ...state.screens };
 const screenGroups = () => (existsSync(W('groups.json')) ? JSON.parse(readFileSync(W('groups.json'), 'utf8')) : state.groups || []);
 const STYLE = state.style || { pageBg: '#cacaca', sectionFill: '#bdbdbd' };
 import { run } from './lib/fill.mjs';
@@ -47,18 +51,21 @@ if (cmd === 'prepare') {
   mkdirSync(outDir, { recursive: true });
   const expected = adapter.components.map((c) => ({ ui: c.ui, kind: c.kind, stage: stageOf(c) }));
   // the boards' order is the one organize laid out (the stage notes keep it), else first use
-  const order = state.stageNotes && Object.keys(state.stageNotes).length ? Object.keys(state.stageNotes) : [...new Set(adapter.components.map(stageOf).filter(Boolean))];
+  const order = state.stageNotes && Object.keys(state.stageNotes).length ? Object.keys(state.stageNotes) : orderStages(LBL, adapter.components.map(stageOf).filter(Boolean));
   writeFileSync(path.join(outDir, 'A1-components.js'), fill({ scope: 'components', page: state.pages.components, expected, order: order.concat(LBL.iconsBoard.name), style: STYLE }));
   // census: per screen, how many of each component the browser drew
   const census = {}, slack = {};
   for (const f of readdirSync(mapDir).filter((x) => /^\d\d-.*\.json$/.test(x))) {
     const m = JSON.parse(readFileSync(path.join(mapDir, f), 'utf8'));
-    const id = state.screens[m.screen] && state.screens[m.screen].frame;
+    const id = SCREENS[m.screen] && SCREENS[m.screen].frame;
     if (!id) continue;
     const cs = censusOf(m);
     census[id] = cs.census; slack[id] = cs.slack;
   }
   const frames = Object.keys(census);
+  // what the report must find results for: a map whose screen has no frame is a screen nobody checks
+  const mapped = readdirSync(mapDir).filter((x) => /^\d\d-.*\.json$/.test(x)).map((f) => JSON.parse(readFileSync(path.join(mapDir, f), 'utf8')).screen);
+  writeFileSync(path.join(outDir, 'expect.json'), JSON.stringify({ screens: frames, unframed: mapped.filter((s) => !(SCREENS[s] && SCREENS[s].frame)) }, null, 1));
   for (let i = 0, k = 0; i < frames.length; i += 10, k++) {
     const chunk = frames.slice(i, i + 10);
     writeFileSync(path.join(outDir, `A2-screens-${String.fromCharCode(97 + k)}.js`),
@@ -70,7 +77,7 @@ if (cmd === 'prepare') {
   const geo = {};
   for (const f of readdirSync(mapDir).filter((x) => /^\d\d-.*\.json$/.test(x))) {
     const m = JSON.parse(readFileSync(path.join(mapDir, f), 'utf8'));
-    const id = state.screens[m.screen] && state.screens[m.screen].frame;
+    const id = SCREENS[m.screen] && SCREENS[m.screen].frame;
     if (!id) continue;
     geo[id] = geoOf(m);
   }
@@ -110,6 +117,15 @@ if (cmd === 'prepare') {
     else if (r.frames) screens.push(...r.frames);
   }
   const badScreens = screens.filter((s) => !s.ok);
+  // coverage first: an audit that saw no screen (or only some) must not pass
+  const expFile = path.join(outDir, 'expect.json');
+  if (existsSync(expFile)) {
+    const exp = JSON.parse(readFileSync(expFile, 'utf8'));
+    const seen = new Set(screens.filter((s) => !s.missing).map((s) => s.id).filter(Boolean));
+    const unseen = exp.screens.filter((id) => !seen.has(id));
+    checks.push({ id: 'the audit covers every screen of the maps', ok: !exp.unframed.length && !unseen.length && (exp.screens.length > 0 || !exp.unframed.length),
+      detail: [...exp.unframed.map((s) => `${s}: no frame known (not in state.json nor next/plan.json)`), ...unseen.map((id) => (screens.some((s) => s.id === id && s.missing) ? `${id}: frame not found in the file` : `${id}: no A2 result`))] });
+  }
   checks.push({ id: 'every screen: components are instances (census = instances)', ok: !screens.some((s) => Object.keys(s.diff || {}).length), detail: badScreens.filter((s) => Object.keys(s.diff || {}).length).slice(0, 12).map((s) => `${s.name}: ${JSON.stringify(s.diff)}`) });
   checks.push({ id: 'every screen: no tagged copy left loose', ok: !screens.some((s) => Object.keys(s.loose || {}).length), detail: screens.filter((s) => Object.keys(s.loose || {}).length).slice(0, 12).map((s) => `${s.name}: ${JSON.stringify(s.loose)}`) });
   checks.push({ id: 'every scroll box is clipped and scrolls', ok: screens.every((s) => !s.scroll || s.scroll.n === s.scroll.clipped), detail: screens.filter((s) => s.scroll && s.scroll.n !== s.scroll.clipped).map((s) => s.name) });

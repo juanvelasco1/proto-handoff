@@ -6,7 +6,8 @@ const PARAMS = /*PARAMS*/ { page: '' } /*END*/;
 const page = await figma.getNodeByIdAsync(PARAMS.page);
 await figma.setCurrentPageAsync(page);
 const frames = page.children.flatMap((c) => (c.type === 'SECTION' ? c.children : [c]))
-  .filter((f) => f.type === 'FRAME' && !f.getSharedPluginData('uic', 'darkOf'));
+  // screens only: not their dark copies, nor the title block 09-layout-screens puts in each section
+  .filter((f) => f.type === 'FRAME' && !f.getSharedPluginData('uic', 'darkOf') && !f.getSharedPluginData('uic', 'screensHead'));
 const looks = {};
 let mixed = 0;
 for (const f of frames) {

@@ -98,6 +98,14 @@ recipe step that returns a promise (waiting for a chat reply, an animation) paus
 resolves. Recipe helpers available in the page: `C(sel)`, `CN(sel,n)`, `CTXT(sel,text)`,
 `TYPE(sel,value)`, `HOV(sel)`, `SCROLL(sel)` (see `scripts/lib/browser.mjs`).
 
+**The element a step clicks becomes the hotspot of the prototype link.** `C(sel)` clicks the first
+match in document order, and the rail comes before the content: a recipe `C('[data-act=open][data-id=a]')`
+on a list whose cards and rail rows both open `a` wires the rail row, and the cards stay dead. Write
+the selector so its first match is what a person would tap on that screen, falling back to the rail
+where the card does not exist:
+`C('.card[data-id="a"], body:not(:has(.card)) [data-act="open"][data-id="a"]')`. Check
+`links.json` (`ui` of each link) before wiring.
+
 ## After editing the runtime
 
 The served HTML carries the runtime embedded. After touching `scripts/runtime/contract-runtime.js`,

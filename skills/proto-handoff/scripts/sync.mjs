@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { run as runTpl, installPlan, installCheck } from './lib/fill.mjs';
 import { levelsFromMaps } from './lib/levels.mjs';
 import { slotsOf, minWidthsOf } from './lib/dom-map.mjs';
-import { labelsFor } from './lib/labels.mjs';
+import { labelsFor, orderStages } from './lib/labels.mjs';
 import { pixelShare } from './lib/pixel-diff.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -304,7 +304,7 @@ return out;
       const m = JSON.parse(readFileSync(path.join(next, state.maps, f), 'utf8'));
       for (const n of m.nodes) if (n.ui) { uses[n.ui] = (uses[n.ui] || 0) + 1; (scr[n.ui] = scr[n.ui] || new Set()).add(m.screen); }
     }
-    const stages = [...new Set(adapter.components.map(stageOf).filter(Boolean))];
+    const stages = orderStages(LBL, adapter.components.map(stageOf).filter(Boolean));
     const DESC = state.stageNotes || {};
     put('05z-organize.js', fill('organize-components.js', { page: state.pages.components, collection: 'Tokens', notes: {},
       uses: Object.fromEntries(Object.entries(uses).map(([k, v]) => [k, LBL.usesOnScreens(v, scr[k].size)])),
