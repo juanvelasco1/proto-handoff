@@ -1,4 +1,4 @@
-// node --test tests/ — the first build: page and section setup, capture reconciliation and the
+// node --test tests/*.test.mjs — the first build: page and section setup, capture reconciliation and the
 // first `sync.mjs detect` (no baseline yet). Everything runs on synthetic data in a temporary folder.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

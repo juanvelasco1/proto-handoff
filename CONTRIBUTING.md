@@ -36,7 +36,7 @@ Thanks for helping. A few rules keep the skill reliable and everyone's data safe
 
 ```sh
 cd skills/proto-handoff/scripts && npm install && cd -
-node --test tests/
+node --test tests/*.test.mjs
 node tools/prepublish-check.mjs
 ```
 

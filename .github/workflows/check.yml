@@ -23,6 +23,6 @@ jobs:
       - name: Syntax check
         run: for f in $(find skills/proto-handoff/scripts tools tests -name '*.mjs' -not -path '*/node_modules/*'); do node --check "$f"; done
       - name: Tests
-        run: node --test tests/
+        run: node --test tests/*.test.mjs
       - name: Privacy and secrets scan (files and history)
         run: node tools/prepublish-check.mjs --history

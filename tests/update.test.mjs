@@ -1,4 +1,4 @@
-// node --test tests/ — the safety net of updates: conflicts, the audit gate, backups, rollback,
+// node --test tests/*.test.mjs — the safety net of updates: conflicts, the audit gate, backups, rollback,
 // project init. Everything runs on synthetic data in a temporary folder.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
