@@ -14,6 +14,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, ConfigError, projectSettings } from './lib/config.mjs';
+import { labelsFor } from './lib/labels.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const [cmd, ...rest] = process.argv.slice(2);
@@ -54,6 +55,8 @@ if (cmd === 'pages-script') {
   const code = `// use_figma — finds or creates the pages proto-handoff uses. Safe to run more than once.
 const NAMES = ${JSON.stringify(names)};
 const KNOWN = ${JSON.stringify(state.pages || {})};
+const KNOWN_SECTION = ${JSON.stringify(state.section || '')};
+const INBOX = ${JSON.stringify(labelsFor(state).inbox)};
 const out = {}, created = [], reused = [];
 const taken = new Set();
 for (const [key, name] of Object.entries(NAMES)) {
@@ -67,7 +70,23 @@ for (const [key, name] of Object.entries(NAMES)) {
   taken.add(p.id);
   out[key] = p.id;
 }
-return { pages: out, created, reused };
+// the section on Screens where captures wait until 09-layout-screens places them (state.section)
+const screens = await figma.getNodeByIdAsync(out.screens);
+await figma.setCurrentPageAsync(screens);
+let section = KNOWN_SECTION ? await figma.getNodeByIdAsync(KNOWN_SECTION) : null;
+if (section && (section.type !== 'SECTION' || section.parent !== screens)) section = null;
+if (!section) section = screens.children.find((n) => n.type === 'SECTION' && n.getSharedPluginData('uic', 'inbox') === '1') || null;
+if (!section) {
+  section = figma.createSection();
+  section.name = INBOX;
+  section.setSharedPluginData('uic', 'inbox', '1');
+  const right = screens.children.filter((n) => n !== section).reduce((m, n) => Math.max(m, n.x + n.width), 0);
+  section.x = right ? right + 400 : 0;
+  section.y = 0;
+  section.resizeWithoutConstraints(${state.width || 1440} * 2 + 400, ${state.height || 900} * 2 + 400);
+  created.push(INBOX);
+}
+return { pages: out, section: section.id, created, reused };
 `;
   mkdirSync(path.join(dir, 'gen'), { recursive: true });
   const file = path.join(dir, 'gen', '00-pages.js');
@@ -85,10 +104,14 @@ if (cmd === 'set-pages') {
   const keys = ['cover', 'foundations', 'components', 'screens', 'flows'];
   const bad = keys.filter((k) => typeof pages[k] !== 'string' || !/^\d+:\d+$/.test(pages[k]));
   if (bad.length) fail(`Missing or invalid page ids for: ${bad.join(', ')}. Pass the object 00-pages.js returned.`);
+  const section = data.section || data.result?.section || '';
+  if (section && !/^\d+:\d+$/.test(section)) fail(`Invalid section id "${section}". Pass the object 00-pages.js returned.`);
   const state = readState(dir);
   state.pages = Object.fromEntries(keys.map((k) => [k, pages[k]]));
+  if (section) state.section = section;
   writeState(dir, state);
-  console.log(`Page ids stored: ${keys.map((k) => `${k} ${pages[k]}`).join(', ')}`);
+  console.log(`Page ids stored: ${keys.map((k) => `${k} ${pages[k]}`).join(', ')}` +
+    (section ? `; new screens wait in section ${section}` : '; no section returned: run the new gen/00-pages.js again to create it'));
   process.exit(0);
 }
 

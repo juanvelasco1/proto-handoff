@@ -24,6 +24,7 @@ const [cmd, work, a3, a4] = process.argv.slice(2);
 const W = (...p) => path.join(work, ...p);
 const state = JSON.parse(readFileSync(W('state.json'), 'utf8'));
 const adapter = JSON.parse(readFileSync(W(state.adapter), 'utf8'));
+const screenGroups = () => (existsSync(W('groups.json')) ? JSON.parse(readFileSync(W('groups.json'), 'utf8')) : state.groups || []);
 const STYLE = state.style || { pageBg: '#cacaca', sectionFill: '#bdbdbd' };
 import { run } from './lib/fill.mjs';
 import { censusOf, geoOf } from './lib/dom-map.mjs';
@@ -88,7 +89,9 @@ if (cmd === 'prepare') {
   // only the pages the project generates are audited (options.outputs)
   const pages = {
     ...(OUT.foundations ? { foundations: { id: state.pages.foundations, layout: 'row', order: topicOrder(LBL) } } : {}),
-    screens: { id: state.pages.screens, layout: 'row', order: (state.groups || []).map((g) => g.title) },
+    // the Screens sections in groups.json order (the titles 09-layout-screens gives them), or
+    // state.groups in projects that keep the order there
+    screens: { id: state.pages.screens, layout: 'row', order: screenGroups().map((g) => g.title.replace(/ · .*/, '')) },
     ...(OUT.flowMap ? { flows: { id: state.pages.flows, layout: 'column' } } : {}),
     ...(OUT.cover ? { cover: { id: state.pages.cover, layout: 'row' } } : {}),
   };

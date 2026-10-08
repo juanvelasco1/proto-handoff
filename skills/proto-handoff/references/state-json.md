@@ -42,10 +42,13 @@ created by `node scripts/init-project.mjs <project> <prototype.html>` **from the
   config when the project is created; later config edits do not change an existing project. The
   scripts read `options` with defaults equal to the values above, so an older state without it
   works unchanged.
-- `pages` holds the page ids: `init-project.mjs pages-script` + `set-pages` fill it.
+- `pages` holds the page ids and `section` the capture section on Screens: `init-project.mjs
+  pages-script` + `set-pages` fill both.
 - `section` is where new screens wait until `09-layout-screens`; if it no longer exists, they wait
   on the page.
-- `groups` gives the order of the Screens sections that the audit checks.
+- The order of the Screens sections that the audit checks comes from `groups.json` in the work
+  folder (the same file that lays the sections out); `groups` here is only read when that file is
+  missing.
 - `fileKey` identifies the user's Figma file. Treat the whole work folder as private: it holds the
   prototype, the file key and screenshots.
 - Other files the update workflow keeps next to it: `next/` (the version being prepared),

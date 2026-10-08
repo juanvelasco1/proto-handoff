@@ -21,6 +21,7 @@ const en = {
   decimal: '.',
   dateLocale: 'en-CA', // YYYY-MM-DD
   parkPage: 'Previous components (temporary)',
+  inbox: 'New screens',
   iconsBoard: { name: 'Icons', desc: "The prototype's glyphs as components" },
   usesOnScreens: (uses, screens) => `${plural(uses, 'use', 'uses')} on ${plural(screens, 'screen', 'screens')}`,
   boardDesc: { modes: "Light and dark mode, bound to the file's variables", single: "Bound to the file's variables" },
@@ -180,6 +181,7 @@ const es = {
   decimal: ',',
   dateLocale: 'es', // DD/MM/YYYY
   parkPage: 'Componentes anteriores (temporal)',
+  inbox: 'Pantallas nuevas',
   iconsBoard: { name: 'Íconos', desc: 'Los glifos del prototipo como componentes' },
   usesOnScreens: (uses, screens) => `${uses} usos en ${plural(screens, 'pantalla', 'pantallas')}`,
   boardDesc: { modes: 'Modo claro y oscuro, ligados a las variables del archivo', single: 'Ligado a las variables del archivo' },

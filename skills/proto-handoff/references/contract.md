@@ -34,6 +34,63 @@ capture turns that label into the layer name. **Nothing is matched by geometry.*
 | `[[wh:474x61.3]]` | The element's box. The capture wraps some elements in frames of their own (margins, an auto margin pushing right) and repeats the tag on them: the size says which layer **is** the element; the others become `margin` (outside) or `content` (inside) |
 | `[[gc:f1,x360,f1]]`, `[[gr:*h]]` | The grid tracks **as the stylesheet wrote them**: `f` flexible (`fr`), `h` fits content (`auto`), `x` fixed in px. The capture only brings px; without this nobody knows which column grows |
 
+## The adapter (`adapter.json`)
+
+Written from the approved inventory (step 1). One JSON object:
+
+| Key | What it is |
+|---|---|
+| `contract` | `"handoff-ready/1"` |
+| `name`, `summary` | The product name and one line about what the file covers (cover page) |
+| `platform`, `device` | `"web"` and the viewport, e.g. `[1440, 900]` |
+| `themes`, `defaultTheme` | e.g. `["light", "dark"]` and `"light"` |
+| `theme` | `{ storageKey, field }`: where the app keeps its theme in `localStorage`; the runtime seeds `{ [field]: theme }` before the app boots. Leave it out when the app reads `data-theme` only |
+| `resetKeys` | `localStorage` keys cleared before each route, so every screen starts clean |
+| `screenRoot` | Selector of the element that carries the screen tag (`#app`, `#shell`); `body` by default |
+| `stepPause` | Milliseconds between recipe steps (180 by default) |
+| `components` | The inventory: `[{ ui, sel, kind, stage, props, slots, list }]` (below) |
+| `sections` | `[{ sel, name }]`: big regions (rail, header, content, side panel) named on the layers |
+| `nav` | `[{ sel, type }]`, later entries win: `navigate`, `back`, `overlay`, `close-overlay`, `swap`, `set-state`, `none` (not a link) and `unmapped` (a control nobody classified yet; the wiring reports it) |
+| `glossary` | Optional `{ term: definition }` in `docsLanguage`, printed on the cover |
+
+A component entry:
+
+| Key | What it is |
+|---|---|
+| `ui` | The component's name in Figma (PascalCase, the product's vocabulary) |
+| `sel` | CSS selector of its root. Verify the count in the browser (step 1) |
+| `kind` | `atom`, `component`, `list` or `container` (SKILL.md, step 1) |
+| `stage` | The board on the Components page, in `docsLanguage` |
+| `props` | `{ axis: [[condition, value], …, default] }`. A condition is a selector the root must match (`".on"`, `"[aria-current=page]"`, `".kan-q .agv"` for context) or, starting with `>`, a selector that must exist inside it (`"> button.value"`). The first match wins; the trailing string is the default |
+| `slots` | `{ slot: selector }`: the texts (or parts) inside the root that change per use; each one becomes a text property |
+| `list` | For `kind: "list"`: the `ui` of its row component |
+
+```json
+{ "ui": "StatusPill", "sel": ".pill", "kind": "component", "stage": "Status and feedback",
+  "props": { "tone": [[".on", "on"], [".warn", "alert"], "off"] }, "slots": { "label": ".pill-text" } }
+```
+
+Older adapters call `stage` `etapa`; both are read.
+
+## The flow table (`bands.json`)
+
+The route table `migrate.mjs` builds the screens from: one band per flow, one cell per screen.
+
+```json
+[{ "k": "F0", "t": "Orders", "n": "From the list to one order.", "kind": "row",
+   "cells": [
+     { "id": "o-01", "t": "Orders", "s": "The list.", "steps": "C('[data-nav=orders]');", "via": null },
+     { "id": "o-02", "t": "Order detail", "s": "One order open.",
+       "steps": "C('[data-nav=orders]');C('.order-row');", "via": "Tap an order" }
+   ] }]
+```
+
+`k` is the flow key (`F0`, `F1`…), `t` its title and `n` a note; each cell has an id, the screen
+title `t`, a subtitle `s`, the recipe `steps` that reaches it from a fresh load, and `via`, the
+gesture that leads there from the previous cell. The screen id is `<flow slug>/<title slug>`; two
+cells with the same recipe are the same screen. `groups.json` (`[{ title, hue, flows: ["F0"] }]`)
+groups flows into the sections of the Screens and User flows pages.
+
 ## Recipes
 
 Each flow step has a recipe (clicks, typing, scrolls) that takes the prototype to that state. A

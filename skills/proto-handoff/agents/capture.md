@@ -8,7 +8,7 @@ the user's file. The orchestrator tells the user before the first capture.
 
 Given in your task: work dir W, the migrated prototype URL (served by `scripts/serve.mjs`, never
 file://), the jobs file (`[{ "screen": "<id>" }, …]`), the Figma fileKey, the nodeId where captures
-go (a section), and the jobs to capture (1-based job numbers).
+go (`state.section`, created by `init-project.mjs pages-script`), and the jobs to capture (1-based job numbers).
 
 Tools: the Figma MCP tool `generate_figma_design` and a shell. The base name is used here; in your
 client it carries a prefix (in Claude Code, for example,
@@ -47,7 +47,8 @@ Final answer: a table of job, screen, node id (or STUCK with the ids tried), pol
   a temporary page (`04-park-components`, flagged `uic.old`) instead of being deleted, so the
   screens still waiting keep rendering, and the late path brings them in afterwards.
 - Captures land at page level, whatever section id was given (often on the Cover page). After the
-  captures finish, `figma/find-captures.js` on that page is the capture ↔ screen truth: keep the
+  captures finish, `figma/find-captures.js` on that page (`node S/template.mjs find-captures
+  '{"page":"<id>"}'`) is the capture ↔ screen truth: keep the
   newest frame per screen, delete the others, write `capture/nodes.json` from it
   (`reconcile-captures.mjs`) and capture only what is still missing.
 - The maps for the build come from the same page loads: `merge-maps.mjs W/capture <maps dir>`.

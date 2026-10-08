@@ -44,6 +44,7 @@ const node = (script, args) => execFileSync(process.execPath, [path.join(here, s
 
 const mapFile = (dir, i, screen) => path.join(dir, `${String(i + 1).padStart(2, '0')}-${screen.replace(/[^a-z0-9]+/gi, '_')}.json`);
 const mapOf = (dir, screen) => {
+  if (!existsSync(dir)) return null;   // first build: no baseline maps yet
   const suf = '-' + screen.replace(/[^a-z0-9]+/gi, '_') + '.json';
   const f = readdirSync(dir).find((x) => /^\d+-/.test(x) && x.slice(x.indexOf('-')) === suf);
   return f ? path.join(dir, f) : null;
