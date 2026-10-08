@@ -1,0 +1,76 @@
+// proto-handoff — your personal settings.
+//
+// Copy this file to ~/.proto-handoff/config.jsonc (or run: node scripts/setup.mjs) and edit that
+// copy, never this one: skill updates replace this file, your copy stays yours.
+// Every setting is optional: delete a line and its default applies. Comments are allowed.
+// The skill checks this file before every run; an invalid value stops it with a clear message.
+//
+// No passwords or tokens go here: the skill talks to Figma through your AI tool's Figma
+// connection (the Figma MCP server), which handles sign-in itself.
+{
+  // Language the skill uses to talk to you. "auto" = the language you write in.
+  // Values: "auto" or a language code ("en", "es", "pt-BR"…). Default: "auto"
+  "language": "auto",
+
+  // Language of the text the skill writes INSIDE Figma (cover, board titles, flow map legend).
+  // Values: "en" | "es". Default: "en"
+  "docsLanguage": "en",
+
+  // Folder where each prototype gets its own work folder (state, captures, maps, backups).
+  // Keep it outside your projects and outside temporary folders (/tmp is wiped by the system).
+  // Default: "~/.proto-handoff/projects"
+  "workRoot": "~/.proto-handoff/projects",
+
+  // Local web server used to capture the prototype (only reachable from this computer).
+  // port: 1024–65535. Default: 8777. Change it if another program already uses 8777.
+  "server": { "port": 8777 },
+
+  // Screen size used to render and capture every screen of NEW projects.
+  // Desktop: 1440 × 900 (default). Phone: 390 × 844. Tablet: 834 × 1194.
+  "viewport": { "width": 1440, "height": 900 },
+
+  // Names of the pages the skill creates or reuses in the Figma file (NEW projects).
+  // Text up to 60 characters. The skill finds pages by these names the first time and by their
+  // id afterwards, so renaming a page in Figma later is safe.
+  "pageNames": {
+    "cover": "Cover",
+    "foundations": "Foundations",
+    "components": "Components",
+    "screens": "Screens",
+    "flows": "User flows"
+  },
+
+  // What to generate besides components and screens. true | false. Default: all true.
+  "outputs": {
+    "cover": true,           // cover page: summary, how to read the file, index, glossary
+    "foundations": true,     // color, type, spacing, layout, icons, elevation, radii boards
+    "flowMap": true,         // "User flows" page: one band per flow with arrows
+    "darkScreens": true,     // a dark copy of every screen (the variables keep both modes anyway)
+    "prototypeLinks": true   // clickable prototype connections between screens
+  },
+
+  // Look of the documentation pages (not of your design). 6-digit hex colors.
+  // The skill warns if title/subtle text on sectionFill falls below WCAG AA contrast (4.5:1).
+  "style": {
+    "pageBg": "#cacaca",      // page background
+    "sectionFill": "#bdbdbd", // fill of each section
+    "title": "#1a1c1f",       // section titles
+    "subtle": "#3d3f42",      // descriptions
+    "gap": 200                // px between sections (0–2000)
+  },
+
+  // How strict the final audit is.
+  "audit": {
+    "tolerancePx": 2,         // how far (px) a component may sit from where the browser drew it. 0–20
+    "minScreenPct": 90,       // % of components that must be in place on every screen. 50–100
+    "systematicScreens": 3    // a component off in this many screens or more fails as systematic. 1–1000
+  },
+
+  // Chrome or Chromium to use. null = find it automatically (or use the CHROME environment variable).
+  // Example (macOS): "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  "browser": { "chromePath": null },
+
+  // "auto": delegate long steps (running scripts, captures) to subagents when your AI tool has them.
+  // "never": the main agent does every step itself (slower, but you see each step).
+  "agent": { "subagents": "auto" }
+}

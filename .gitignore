@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+
+# personal settings and secrets: never committed
+config.json
+config.jsonc
+.env
+.env.*
+*.pem
+*.key
+
+# project work data (lives in ~/.proto-handoff; ignored here in case someone points workRoot at the repo)
+state.json
+fingerprints*.json
+projects/
+backups/
+next/
+capture/
+shots/
+maps/
+map/
+gen/
+fp/
+
+# local-only list of words the prepublish check must never find (it would leak them if committed)
+.private-terms.txt
+
+# noise
+*.log
+*.bak
+*.bak-*
+.DS_Store
+__pycache__/
+*.pyc

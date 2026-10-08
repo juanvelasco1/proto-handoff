@@ -1,0 +1,28 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install script dependencies
+        run: npm ci --prefix skills/proto-handoff/scripts
+      - name: Syntax check
+        run: for f in $(find skills/proto-handoff/scripts tools tests -name '*.mjs' -not -path '*/node_modules/*'); do node --check "$f"; done
+      - name: Tests
+        run: node --test tests/
+      - name: Privacy and secrets scan (files and history)
+        run: node tools/prepublish-check.mjs --history

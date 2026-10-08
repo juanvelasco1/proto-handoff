@@ -1,0 +1,46 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "proto-handoff-prototype",
+  "title": "Handoff-ready prototype",
+  "version": "0.1.0",
+  "description": "Single-file HTML app and web prototypes that declare their tokens, components, screens, states and navigation, so proto-handoff can rebuild them as an editable design file for Figma.",
+  "license": "MIT",
+  "author": {
+    "name": "juanvelasco1",
+    "url": "https://github.com/juanvelasco1"
+  },
+  "homepage": "https://github.com/juanvelasco1/proto-handoff",
+  "plugin": {
+    "repo": "https://github.com/juanvelasco1/proto-handoff/tree/main/open-design/proto-handoff-prototype"
+  },
+  "tags": ["create", "prototype", "design-handoff", "design-system", "handoff-ready"],
+  "compat": {
+    "agentSkills": [{ "path": "./SKILL.md" }]
+  },
+  "od": {
+    "kind": "skill",
+    "taskKind": "new-generation",
+    "mode": "prototype",
+    "scenario": "product",
+    "useCase": {
+      "query": {
+        "en": "Prototype a mobile app for managing product collections: list, detail, create flow with validation, filters bottom sheet, light and dark themes."
+      }
+    },
+    "context": {
+      "skills": [{ "path": "./SKILL.md" }],
+      "craft": [
+        "color",
+        "typography",
+        "typography-hierarchy",
+        "state-coverage",
+        "form-validation",
+        "accessibility-baseline",
+        "laws-of-ux",
+        "anti-ai-slop"
+      ]
+    },
+    "capabilities": ["prompt:inject", "fs:write"]
+  }
+}

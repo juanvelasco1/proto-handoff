@@ -1,0 +1,15 @@
+{
+  "name": "proto-handoff-scripts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node scripts of the proto-handoff agent skill: capture an HTML prototype, generate the Figma Plugin API scripts that rebuild it, keep it in sync and audit the result.",
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright-core": "^1.63.0",
+    "pngjs": "^7.0.0"
+  }
+}
