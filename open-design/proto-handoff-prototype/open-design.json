@@ -3,7 +3,7 @@
   "specVersion": "1.0.0",
   "name": "proto-handoff-prototype",
   "title": "Handoff-ready prototype",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Single-file HTML app and web prototypes that declare their tokens, components, screens, states and navigation, so proto-handoff can rebuild them as an editable design file for Figma.",
   "license": "MIT",
   "author": {

@@ -7,7 +7,7 @@
       "name": "proto-handoff",
       "source": "./",
       "description": "HTML prototype to an editable design file for Figma, kept in sync when the prototype changes.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "license": "MIT",
       "keywords": ["figma", "design-system", "prototype"]
     }

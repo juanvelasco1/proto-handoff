@@ -3,7 +3,7 @@
 **HTML prototype → editable design file for Figma, kept in sync.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.1.1-informational.svg)](CHANGELOG.md)
 [![Agent Skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-8A2BE2.svg)](https://agentskills.io/specification)
 
 [Español](README.es.md)

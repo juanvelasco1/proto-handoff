@@ -5,6 +5,8 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-08
+
 Fixes found by the first end-to-end run on a real prototype.
 
 ### Fixed

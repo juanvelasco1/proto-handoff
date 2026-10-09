@@ -3,7 +3,7 @@
 **De prototipo HTML a archivo de diseño editable en Figma, y siempre al día.**
 
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-0.1.0-informational.svg)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-0.1.1-informational.svg)](CHANGELOG.md)
 [![Agent Skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-8A2BE2.svg)](https://agentskills.io/specification)
 
 [English](README.md)

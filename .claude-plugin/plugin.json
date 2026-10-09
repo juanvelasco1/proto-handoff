@@ -1,6 +1,6 @@
 {
   "name": "proto-handoff",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Turn a single-file HTML prototype (Open Design or any AI builder) into an editable design file for Figma: variables with light and dark modes, components with variants and slots, screens made of instances, prototype links, a flow map and a self-audit. Keeps the file in sync when the prototype changes.",
   "author": { "name": "juanvelasco1", "url": "https://github.com/juanvelasco1" },
   "homepage": "https://github.com/juanvelasco1/proto-handoff",
