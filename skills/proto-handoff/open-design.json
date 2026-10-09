@@ -1,0 +1,66 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "proto-handoff",
+  "title": "Export to Figma (proto-handoff)",
+  "title_i18n": {
+    "en": "Export to Figma (proto-handoff)",
+    "es": "Exportar a Figma (proto-handoff)"
+  },
+  "version": "0.1.2",
+  "description": "Rebuild an accepted prototype in Figma as an editable design file: variables with light and dark modes, components with variants and slots, screens made of instances, prototype links, a flow map and a self-audit. Later changes update only what changed.",
+  "description_i18n": {
+    "en": "Rebuild an accepted prototype in Figma as an editable design file: variables with light and dark modes, components with variants and slots, screens made of instances, prototype links, a flow map and a self-audit. Later changes update only what changed.",
+    "es": "Reconstruye en Figma un prototipo aceptado como archivo de diseño editable: variables con modo claro y oscuro, componentes con variantes y slots, pantallas hechas de instancias, enlaces de prototipo, mapa de flujos y una auditoría propia. Los cambios posteriores solo tocan lo que cambió."
+  },
+  "license": "MIT",
+  "author": {
+    "name": "juanvelasco1",
+    "url": "https://github.com/juanvelasco1"
+  },
+  "homepage": "https://github.com/juanvelasco1/proto-handoff",
+  "plugin": {
+    "repo": "https://github.com/juanvelasco1/proto-handoff/tree/main/skills/proto-handoff"
+  },
+  "tags": ["export", "downstream", "figma", "design-handoff", "design-system"],
+  "compat": {
+    "agentSkills": [{ "path": "./SKILL.md" }]
+  },
+  "od": {
+    "kind": "skill",
+    "taskKind": "tune-collab",
+    "scenario": "downstream-export",
+    "mode": "export",
+    "useCase": {
+      "query": {
+        "en": "Rebuild the accepted prototype in the Figma design file {{figmaFile}} as an editable design: variables with light and dark modes, components for everything that repeats, screens made of instances, prototype links, a flow map and the self-audit.",
+        "es": "Reconstruye el prototipo aceptado en el archivo de Figma {{figmaFile}} como diseño editable: variables con modo claro y oscuro, componentes para todo lo que se repite, pantallas hechas de instancias, enlaces de prototipo, mapa de flujos y la auditoría."
+      },
+      "exampleOutputs": []
+    },
+    "inputs": [
+      {
+        "name": "figmaFile",
+        "type": "string",
+        "required": true,
+        "label": "Figma design file URL",
+        "placeholder": "https://www.figma.com/design/…"
+      }
+    ],
+    "context": {
+      "mcp": [{ "name": "figma", "url": "https://mcp.figma.com/mcp" }]
+    },
+    "genui": {
+      "surfaces": [
+        {
+          "id": "capture-upload",
+          "kind": "confirmation",
+          "persist": "run",
+          "prompt": "The capture uploads the rendered prototype (texts, images and styles) to Figma's capture service and into the file. Continue only if the prototype holds no confidential data you do not want in Figma.",
+          "capabilitiesRequired": ["mcp", "network"]
+        }
+      ]
+    },
+    "capabilities": ["prompt:inject", "fs:read", "fs:write", "bash", "subprocess", "network", "mcp"]
+  }
+}

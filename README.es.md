@@ -3,7 +3,7 @@
 **De prototipo HTML a archivo de diseño editable en Figma, y siempre al día.**
 
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-0.1.1-informational.svg)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-0.1.2-informational.svg)](CHANGELOG.md)
 [![Agent Skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-8A2BE2.svg)](https://agentskills.io/specification)
 
 [English](README.md)
@@ -74,6 +74,16 @@ claude plugin install proto-handoff@proto-handoff
 ```sh
 npx skills add juanvelasco1/proto-handoff
 ```
+
+**Open Design** (el plugin de exportación, *Exportar a Figma*):
+
+```sh
+od plugin install github:juanvelasco1/proto-handoff/skills/proto-handoff
+```
+
+Pide el archivo de diseño de Figma, declara el servidor MCP de Figma para la ejecución y pregunta
+antes de que la captura suba el prototipo. Su complemento para prototipos nuevos está en
+[`open-design/proto-handoff-prototype`](open-design/proto-handoff-prototype/README.md).
 
 **A mano**: copia `skills/proto-handoff` en la carpeta de skills de tu herramienta
 (`~/.claude/skills/` en Claude Code; `~/.agents/skills/` en Codex, Cursor, Gemini CLI y VS Code).

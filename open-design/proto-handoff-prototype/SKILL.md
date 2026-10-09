@@ -4,7 +4,7 @@ description: Builds app, web app and dashboard prototypes as one self-contained 
 license: MIT
 metadata:
   author: juanvelasco1
-  version: "0.1.1"
+  version: "0.1.2"
   pairs-with: proto-handoff
 ---
 

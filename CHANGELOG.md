@@ -5,6 +5,15 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-09
+
+### Added
+
+- Open Design manifest for the main skill (`skills/proto-handoff/open-design.json`): an export
+  plugin, *Export to Figma*, that asks for the Figma design file, declares Figma's MCP server for
+  the run and asks before the capture uploads the prototype. Install it with
+  `od plugin install github:juanvelasco1/proto-handoff/skills/proto-handoff`.
+
 ## [0.1.1] - 2026-10-08
 
 Fixes found by the first end-to-end run on a real prototype.
