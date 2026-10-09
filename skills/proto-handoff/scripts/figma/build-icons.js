@@ -16,6 +16,30 @@ let board = compPage.findOne((n) => n.getSharedPluginData('uic', 'board') === 'i
 const mains = {};
 if (board) for (const c of board.children) { const k = c.getSharedPluginData('uic', 'component'); if (k) mains[k] = c; }
 
+// a turned glyph (a chevron the stylesheet rotates to point left) keeps its turn INSIDE its main:
+// turned as a whole, the component's own rotation never reaches an instance, and the back chevron
+// pointed down. The main takes the glyph's upright box, and a frame inside it carries the turn
+// (mains made before this are mended in place: their instances follow)
+function upright(main) {
+  const r = main.rotation || 0;
+  if (Math.abs(r) <= 0.5 || (main.layoutMode && main.layoutMode !== 'NONE')) return false;
+  const bb = main.absoluteBoundingBox, w = main.width, h = main.height;
+  const T = figma.createFrame();
+  T.name = 'turn'; T.fills = []; T.clipsContent = main.clipsContent;
+  T.resize(Math.max(w, 0.01), Math.max(h, 0.01));
+  for (const c of [...main.children]) { const x = c.x, y = c.y; T.appendChild(c); c.x = x; c.y = y; }
+  main.rotation = 0;
+  main.resize(Math.max(bb.width, 0.01), Math.max(bb.height, 0.01));
+  main.appendChild(T);
+  T.rotation = r;
+  const tb = T.absoluteBoundingBox, mb = main.absoluteBoundingBox;
+  T.x += mb.x - tb.x; T.y += mb.y - tb.y;
+  for (const v of [T, ...T.findAll(() => true)]) if ('constraints' in v) v.constraints = { horizontal: 'SCALE', vertical: 'SCALE' };
+  return true;
+}
+let mended = 0;
+for (const m of Object.values(mains)) if (upright(m)) mended++;
+
 const occ = {};
 for (const f of frames) {
   const found = f.findAll((n) => n.getSharedPluginData('uic', 'icon') !== '');
@@ -80,6 +104,7 @@ for (const [name, list] of Object.entries(occ)) {
     main = figma.createComponentFromNode(clone);
     main.name = key;
     for (const v of main.findAll(() => true)) if ('constraints' in v) v.constraints = { horizontal: 'SCALE', vertical: 'SCALE' };
+    upright(main);
     main.description = 'Glyph from the prototype (data-ui-icon="' + name + '").';
     main.setSharedPluginData('uic', 'component', key);
     mains[key] = main; report.created++;
@@ -117,4 +142,5 @@ for (const [name, list] of Object.entries(occ)) {
   }
 }
 report.icons = Object.keys(occ).length;
+report.mended = mended;
 return report;

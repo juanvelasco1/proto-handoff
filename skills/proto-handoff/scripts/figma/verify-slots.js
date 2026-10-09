@@ -57,6 +57,9 @@ for (const [fid, occs] of Object.entries(PARAMS.slots)) {
         // the browser's slot text is the element's whole textContent: a slot made of several
         // text layers (title + subtitle) is compared as a whole and left alone when it matches
         if (flat(texts.map((x) => x.characters).join('')) === flat(want)) continue;
+        // maps made before whole texts were kept cut them at 80 characters: such a text that the
+        // layer starts with is the same text, never written over
+        if (want.length === 80 && flat(texts.map((x) => x.characters).join('')).startsWith(flat(want))) continue;
         if (texts.length > 1) { out.noSlotLayer.push(`${ui}.${slot} (several texts)`); continue; }
         const t = texts[0];
         const have = t.characters.replace(/\s+/g, ' ').trim();

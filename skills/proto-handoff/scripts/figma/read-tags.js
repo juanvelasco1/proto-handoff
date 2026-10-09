@@ -446,12 +446,12 @@ for (const id of PARAMS.screens) {
   // The wrapper remembers the element's own sizing, which comes back if the wrapper goes
   stats.baked = 0;
   const ownSizing = new Map();
-  for (const [n, r] of [...raw]) {
-    if (n.removed || wrappers.has(n) || n.type !== 'FRAME' || !('layoutMode' in n) || n.layoutMode === 'NONE') continue;
-    const wh = whOf(r.tags); if (!wh) continue;
-    const P = n.parent; if (!P || !('children' in P) || P === frame) continue;
+  const unbake = (n, r) => {
+    if (n.removed || wrappers.has(n) || n.type !== 'FRAME' || !('layoutMode' in n) || n.layoutMode === 'NONE') return false;
+    const wh = whOf(r.tags); if (!wh) return false;
+    const P = n.parent; if (!P || !('children' in P) || P === frame) return false;
     const g = gutter.get(n) || [0, 0, 0];
-    const ax = bakedAxis(n, r.label, wh, g); if (!ax) continue;
+    const ax = bakedAxis(n, r.label, wh, g); if (!ax) return false;
     const side = ax === 'h';
     // the padding on that axis, less the scrollbar's room in it: that room stays in n
     const [A, Z] = side ? ['paddingLeft', 'paddingRight'] : ['paddingTop', 'paddingBottom'];
@@ -472,7 +472,9 @@ for (const id of PARAMS.screens) {
     try { n.layoutPositioning = 'AUTO'; n.layoutSizingHorizontal = 'FILL'; n.layoutSizingVertical = 'FILL'; } catch (e) {}
     ownSizing.set(W, { h: keep.h, v: keep.v });
     wrappers.set(W, 'margin'); stats.baked++;
-  }
+    return true;
+  };
+  for (const [n, r] of [...raw]) unbake(n, r);
   const roots = [], scrolls = [];
   let sized = false;
   for (const [n, r] of raw) {
@@ -508,6 +510,7 @@ for (const id of PARAMS.screens) {
     if (tags.pos) SET(n, 'pos', tags.pos);
     if (tags.fx) SET(n, 'fx', tags.fx);
     if (tags.as) SET(n, 'as', tags.as);
+    if (tags.ov) SET(n, 'ov', tags.ov);
     if (label) SET(n, 'label', label.slice(0, 200));
     n.name = name || (label ? label.slice(0, 48) : n.type.toLowerCase());
   }
@@ -553,7 +556,7 @@ for (const id of PARAMS.screens) {
   const J = { s: 'MIN', e: 'MAX', c: 'CENTER', sb: 'SPACE_BETWEEN', sa: 'SPACE_BETWEEN', se: 'SPACE_BETWEEN' }, A = { s: 'MIN', e: 'MAX', c: 'CENTER', st: 'MIN', b: 'BASELINE' };
   for (const F of frame.findAll((x) => x.type === 'FRAME' && U(x, 'fx'))) {
     if (F.removed) continue;
-    const m = U(F, 'fx').match(/^([rc])(w?):([\d.]+),([\d.]+):(\w+):(\w+)$/);
+    const m = U(F, 'fx').match(/^([rc])(w?):([\d.]+),([\d.]+):(\w+):(\w+)(?::(\d+(?:[ag]\d+)+))?$/);
     if (!m) continue;
     const row = m[1] === 'r', wrap = !!m[2] && row, cg = +m[3], rg = +m[4], jc = m[5], ai = m[6];
     const outOfFlow = (c) => U(c, 'pos') === 'a' || U(c, 'pos') === 'f';
@@ -580,6 +583,23 @@ for (const id of PARAMS.screens) {
       const trust = !overlap && !crammed;
       const padB = row && trust ? Math.max(0, size[1] - Math.max(...flow.map(far))) : 0;
       const padR = !row && trust ? Math.max(0, size[0] - Math.max(...flow.map(far))) : 0;
+      // the room between two items beyond the box's gap is a margin (a team tile's member row
+      // 7 px under its title, with no gap in the stylesheet): stacked at the gap, every item after
+      // it moved up that much. It comes back as a margin wrapper, which the gaps pass below turns
+      // into the box's gap where every pair agrees. Read where the capture put the items, in a box
+      // that starts its items (spread or centered items measure free room, not margins)
+      const extra = new Map();
+      if (trust && !wrap && jc === 's') {
+        const ord = flow.slice().sort((a, b) => (row ? a.x - b.x : a.y - b.y));
+        for (let i = 1; i < ord.length; i++) {
+          const a = ord[i - 1], b = ord[i];
+          const g = (row ? b.x - (a.x + a.width) : b.y - (a.y + a.height)) - (row ? cg : rg);
+          if (g > 0.5) extra.set(b, Math.round(g * 10) / 10);
+        }
+      }
+      // an out-of-flow layer stays where the capture drew it: made absolute after auto layout had
+      // stacked it with the items, it kept the flow's place (a tile's canvas sat inside its padding)
+      const freeAt = new Map(kids.filter(outOfFlow).map((c) => [c, [c.x, c.y]]));
       F.layoutMode = row ? 'HORIZONTAL' : 'VERTICAL';
       try { F.layoutWrap = wrap ? 'WRAP' : 'NO_WRAP'; } catch (e) {}
       F.itemSpacing = row ? cg : rg;
@@ -593,8 +613,26 @@ for (const id of PARAMS.screens) {
         // stretch: a child that ran the whole cross axis keeps running it
         if (ai === 'st' && c.type !== 'TEXT') { try { const inner = row ? size[1] - padT : size[0] - padL; if (Math.abs((row ? h : w) - inner) <= 1.5) { if (row) c.layoutSizingVertical = 'FILL'; else c.layoutSizingHorizontal = 'FILL'; } } catch (e) {} }
       }
-      for (const c of kids) if (outOfFlow(c)) { try { c.layoutPositioning = 'ABSOLUTE'; } catch (e) {} }
+      for (const c of kids) if (outOfFlow(c)) { try { c.layoutPositioning = 'ABSOLUTE'; const [x, y] = freeAt.get(c); c.x = x; c.y = y; } catch (e) {} }
+      for (const [c, g] of extra) {
+        const W = figma.createFrame();
+        W.name = 'margin'; W.fills = []; W.clipsContent = false;
+        W.layoutMode = row ? 'HORIZONTAL' : 'VERTICAL';
+        try {
+          F.insertChild(F.children.indexOf(c), W);
+          const own = { h: c.layoutSizingHorizontal, v: c.layoutSizingVertical };
+          W.appendChild(c);
+          if (row) W.paddingLeft = g; else W.paddingTop = g;
+          W.primaryAxisSizingMode = 'AUTO'; W.counterAxisSizingMode = 'AUTO';
+          wrappers.set(W, 'margin'); ownSizing.set(W, own);
+          stats.margins = (stats.margins || 0) + 1;
+        } catch (e) {}
+      }
       stats.flexed++;
+      // a box the capture left without auto layout (a row that wraps) was not checked for a
+      // margin baked into its padding above: now it has auto layout and its padding, it is (a
+      // suggestion bar 12 px taller than the browser drew it, its margin on top)
+      if (raw.has(F)) unbake(F, raw.get(F));
     } else if (F.layoutMode === 'HORIZONTAL' || F.layoutMode === 'VERTICAL') {
       let changed = false;
       if (wrap && F.layoutMode === 'HORIZONTAL' && F.layoutWrap !== 'WRAP') { try { F.layoutWrap = 'WRAP'; F.counterAxisSpacing = rg; changed = true; } catch (e) {} }
@@ -603,6 +641,59 @@ for (const id of PARAMS.screens) {
       if (lone && F.primaryAxisAlignItems === 'SPACE_BETWEEN') { try { F.primaryAxisAlignItems = 'MIN'; changed = true; } catch (e) {} }
       else if (!lone && J[jc] === 'SPACE_BETWEEN' && F.primaryAxisAlignItems !== 'SPACE_BETWEEN' && inFlow.length > 1) { try { F.primaryAxisAlignItems = 'SPACE_BETWEEN'; changed = true; } catch (e) {} }
       if (changed) stats.flexed++;
+    }
+    // the items that take the free room along the main axis (flexItems in the runtime): one that
+    // grows fills it (a title that keeps its meta at the row's end), and one an auto margin pushes
+    // away gets an empty spacer before it that takes the room (a column's count at the header's
+    // right edge). Two items spread instead, without a spacer: the same picture. Nothing is pushed
+    // where an item grows (the browser gives the grower all the room), nor on an axis that hugs.
+    // Only when the capture kept one layer per item
+    if (m[7] && (F.layoutMode === 'HORIZONTAL' || F.layoutMode === 'VERTICAL') && F.layoutWrap !== 'WRAP' && F.primaryAxisSizingMode === 'FIXED') {
+      const flow = F.children.filter((c) => c.visible !== false && c.layoutPositioning !== 'ABSOLUTE');
+      const em = m[7].match(/^(\d+)(.*)$/);
+      if (+em[1] === flow.length) {
+        const H = F.layoutMode === 'HORIZONTAL';
+        const along = H ? 'layoutSizingHorizontal' : 'layoutSizingVertical';
+        const pushed = [];
+        let textGrew = false;
+        for (const [, k, i] of em[2].matchAll(/([ag])(\d+)/g)) {
+          const c = flow[+i];
+          if (!c) continue;
+          if (k === 'a') { pushed.push(c); continue; }
+          if (c.type === 'TEXT') textGrew = true;
+          try {
+            if (c.type === 'TEXT') { if (c.fontName !== figma.mixed) await figma.loadFontAsync(c.fontName); if (H) c.textAutoResize = 'HEIGHT'; }
+            c[along] = 'FILL';
+            stats.grown = (stats.grown || 0) + 1;
+          } catch (e) {}
+        }
+        const grows = flow.some((c) => c[along] === 'FILL' || c.layoutGrow === 1);
+        // an item that grows takes the free room: nothing is left to spread, and Figma's
+        // space-between then drops the gap (a card's title ran into its date)
+        if (grows && F.primaryAxisAlignItems === 'SPACE_BETWEEN') { try { F.primaryAxisAlignItems = 'MIN'; } catch (e) {} }
+        // and a text that grows takes the room the capture left after it: a text-only item lost
+        // its box, the capture kept the text's own width and measured the rest of the box as the
+        // gap (a row's title, 143 px from its meta, wrapped onto two lines). The stylesheet's gap
+        // comes back. A layer that kept its box was measured with it: its gap holds real margins
+        if (textGrew && Math.abs(F.itemSpacing - (H ? cg : rg)) > 0.5) {
+          try { F.itemSpacing = H ? cg : rg; stats.regapped = (stats.regapped || 0) + 1; } catch (e) {}
+        }
+        if (pushed.length && !grows) {
+          if (flow.length === 2 && pushed.length === 1 && pushed[0] === flow[1]) { try { F.primaryAxisAlignItems = 'SPACE_BETWEEN'; stats.pushed = (stats.pushed || 0) + 1; } catch (e) {} }
+          else if (F.primaryAxisAlignItems === 'MIN') {
+            for (const c of pushed) {
+              const sp = figma.createFrame();
+              sp.name = 'spacer'; sp.fills = []; sp.clipsContent = false;
+              try {
+                F.insertChild(F.children.indexOf(c), sp);
+                sp.resize(1, 1);
+                sp[along] = 'FILL';
+                stats.pushed = (stats.pushed || 0) + 1;
+              } catch (e) { sp.remove(); }
+            }
+          }
+        }
+      }
     }
   }
   // an item that aligns itself across its flex box (align-self: a day divider centered in a column
@@ -680,6 +771,20 @@ for (const id of PARAMS.screens) {
       if (t) slots[U(s, 'slot')] = t.characters.replace(/\s+/g, ' ').trim();
     }
     if (Object.keys(slots).length) SET(r, 'slots', JSON.stringify(slots));
+  }
+  // a ring drawn with an inset shadow (box-shadow: inset 0 0 0 1px — a round send button's
+  // outline): Figma draws an inner shadow only where the box is painted, and on a transparent box
+  // the ring disappeared. With no blur and no offset it is an inside stroke of its spread
+  stats.rings = 0;
+  for (const n of frame.findAll((x) => 'effects' in x && 'strokes' in x && x.effects.length)) {
+    const ring = n.effects.find((e) => e.type === 'INNER_SHADOW' && e.visible !== false && !e.radius && !e.offset.x && !e.offset.y && e.spread > 0);
+    if (!ring || n.strokes.some((p) => p.visible !== false)) continue;
+    try {
+      n.strokes = [{ type: 'SOLID', color: { r: ring.color.r, g: ring.color.g, b: ring.color.b }, opacity: ring.color.a }];
+      n.strokeWeight = ring.spread; n.strokeAlign = 'INSIDE';
+      n.effects = n.effects.filter((e) => e !== ring);
+      stats.rings++;
+    } catch (e) {}
   }
   // anonymous text wrappers keep Figma's default name; give them their text
   for (const t of frame.findAllWithCriteria({ types: ['TEXT'] })) {

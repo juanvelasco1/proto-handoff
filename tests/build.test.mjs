@@ -2,7 +2,7 @@
 // first `sync.mjs detect` (no baseline yet). Everything runs on synthetic data in a temporary folder.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -130,4 +130,61 @@ test('stages: the Components boards follow the canonical order, other names afte
     ['Estructura de la app', 'Navegación', 'Chat', 'Mi tablero']);
   // a name in the other language is still recognized
   assert.deepEqual(orderStages(LANGS.en, ['Identity', 'Navegación', 'App structure']), ['App structure', 'Navegación', 'Identity']);
+});
+
+test('slot texts: every text a slot showed, and where it sat, from the DOM maps', async () => {
+  const { slotTextsOf } = await import('../skills/proto-handoff/scripts/lib/dom-map.mjs');
+  const adapter = { components: [{ ui: 'Column', sel: '.col', slots: { title: '.col-n', count: '.col-c' } }, { ui: 'Plain', sel: '.p' }] };
+  const col = (title, count) => [
+    { d: 1, ui: 'Column', name: 'col', r: [0, 0, 200, 300], slots: { title, count } },
+    { d: 2, name: 'col-h', r: [0, 0, 200, 20] },
+    { d: 3, name: 'col-n', r: [0, 0, 60, 20] },
+    { d: 3, name: 'col-c', r: [190, 0, 10, 20] },
+  ];
+  const maps = [{ screen: 'a', nodes: [{ d: 0, name: 'root', r: [0, 0, 800, 600] }, ...col('Waiting', '3'), ...col('Done', '12'), { d: 1, ui: 'Plain', name: 'p', r: [0, 0, 1, 1] }] },
+    { screen: 'b', nodes: [{ d: 0, name: 'root', r: [0, 0, 800, 600] }, ...col('Waiting', '0')] }];
+  assert.deepEqual(slotTextsOf(maps, adapter), {
+    Column: { title: { values: ['Waiting', 'Done'], path: [0, 0] }, count: { values: ['3', '12', '0'], path: [0, 1] } },
+  });
+});
+
+test('every Figma template fills into a script that parses', () => {
+  const dir = path.join(S, 'figma');
+  const names = readdirSync(dir).filter((f) => f.endsWith('.js')).map((f) => f.replace(/\.js$/, ''));
+  assert.ok(names.length > 10);
+  for (const t of names) {
+    const r = node('template.mjs', [t, '{}']);
+    assert.equal(r.status, 0, `${t}: ${r.stderr}`);
+    assert.doesNotThrow(() => new AsyncFunction('figma', r.stdout), t);
+  }
+});
+
+test('capture: the runtime writes color-mix() and newer color syntaxes back as rgb()', async (t) => {
+  const { chromium } = await import(path.join(S, 'node_modules', 'playwright-core', 'index.mjs'));
+  const { chromePath } = await import(path.join(S, 'lib', 'browser.mjs'));
+  let exe;
+  try { exe = chromePath(); } catch (e) { t.skip('no Chrome on this machine'); return; }
+  const browser = await chromium.launch({ executablePath: exe });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(`<style>:root{--fg:#16181b}
+      .ring{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--fg) 13%,transparent),0 2px 4px rgba(0,0,0,.2);
+        background:color-mix(in srgb,red 50%,white);color:oklch(60% 0.1 250 / 50%);border:1px solid rgb(0 0 0 / 50%)}
+      .grad{background-image:linear-gradient(oklch(70% 0.1 30),red)}</style>
+      <div class="ring">x<svg width="10" height="10"><path d="M0 0h10v10z" fill="currentColor"/></svg></div><div class="grad">g</div>`);
+    await page.addScriptTag({ content: 'window.__UI_ADAPTER__ = { components: [] };' });
+    await page.addScriptTag({ path: path.join(S, 'runtime', 'contract-runtime.js') });
+    const got = await page.evaluate(() => {
+      window.__UI_CONTRACT__.tagForCapture([]);
+      const cs = (s) => getComputedStyle(document.querySelector(s));
+      return { shadow: cs('.ring').boxShadow, bg: cs('.ring').backgroundColor, color: cs('.ring').color,
+        border: cs('.ring').borderTopColor, grad: cs('.grad').backgroundImage, path: cs('path').fill };
+    });
+    assert.equal(got.shadow, 'rgba(22, 24, 27, 0.13) 0px 0px 0px 1px inset, rgba(0, 0, 0, 0.2) 0px 2px 4px 0px');
+    assert.equal(got.bg, 'rgb(255, 128, 128)');
+    assert.match(got.color, /^rgba\(\d+, \d+, \d+, 0\.5\)$/);
+    assert.equal(got.border, 'rgba(0, 0, 0, 0.5)');
+    assert.match(got.grad, /^linear-gradient\(rgb\(\d+, \d+, \d+\), rgb\(255, 0, 0\)\)$/);
+    assert.equal(got.path, got.color);
+  } finally { await browser.close(); }
 });

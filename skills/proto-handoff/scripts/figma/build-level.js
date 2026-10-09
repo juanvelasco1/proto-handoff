@@ -10,8 +10,10 @@
 //     of them (a header, a footer) stays in the component, editable once for every screen.
 //   · a grid column whose width changes between occurrences becomes a flexible track.
 // Run inner levels first (an Avatar before the InboxRow that holds it).
-const PARAMS = /*PARAMS*/ { ui: [], kinds: {}, lists: {}, screens: [], componentsPage: '', codeRefs: {}, keep: 5, origin: [0, 0], budgetMs: 40000, minW: {} } /*END*/;
+const PARAMS = /*PARAMS*/ { ui: [], kinds: {}, lists: {}, screens: [], componentsPage: '', codeRefs: {}, keep: 5, origin: [0, 0], budgetMs: 40000, minW: {}, slotText: {},
+  text: { ref: 'From the prototype: {ref}', none: 'From the prototype.' } } /*END*/;
 // minW: { ui: { slot: { px, path } } } — the CSS width floors of slot texts (lib/dom-map.mjs minWidthsOf)
+// slotText: { ui: { slot: { values, path } } } — the texts each slot showed (lib/dom-map.mjs slotTextsOf)
 /*TEXT*/
 /*KIT:build*/
 const T0 = Date.now();
@@ -103,6 +105,131 @@ function growItems(parts, partOf) {
       if (t) { try { t.layoutSizingHorizontal = 'FILL'; n++; } catch (e) {} }
     }
   }
+  return n;
+}
+// a box as wide as its own content on every occurrence, at widths that differ between them (a
+// pill that reads "Reading" here and "Writing a reply" there, a group's title beside its count):
+// the main hugs it. Kept at the rep's width it clipped every longer text. The root too, unless a
+// slot decides its sizing (hugPlan)
+function hugContent(parts, partOf, comp, slotted) {
+  let n = 0;
+  for (const [b, list] of parts) {
+    const d = partOf(b);
+    if (!d || d.type === 'INSTANCE' || list.length < 2 || (d.layoutMode !== 'HORIZONTAL' && d.layoutMode !== 'VERTICAL')) continue;
+    if (d === comp ? slotted : d.layoutSizingHorizontal !== 'FIXED') continue;
+    if (d.layoutWrap === 'WRAP' || /x/.test(U(d, 'scroll')) || hugsAxis(d, true)) continue;
+    const ws = list.map((a) => a.width);
+    if (Math.max(...ws) - Math.min(...ws) <= 2 || !list.every((a) => driven(a, true))) continue;
+    try {
+      if (d === comp) { if (d.layoutMode === 'HORIZONTAL') d.primaryAxisSizingMode = 'AUTO'; else d.counterAxisSizingMode = 'AUTO'; }
+      else d.layoutSizingHorizontal = 'HUG';
+      n++;
+    } catch (e) {}
+  }
+  return n;
+}
+// a one-line text that ends in "…" (ov:e, text-overflow: ellipsis). Where the box takes its
+// width from its row or column (it grows, flex: 1) or the browser cut this occurrence's text, the
+// text fills the box and is cut there in every instance (a card title ran under the date). A box
+// as wide as its text (a pill, a name under an avatar) hugs it instead, and so do the boxes around
+// it that were as wide as their content: fixed at the browser's width, Figma's glyphs, a few
+// percent wider, cut "Writing" to "Writi…". Past the box's max width the text is cut there
+async function ellipsize(comp, slotted) {
+  let n = 0;
+  for (const f of comp.findAll((x) => x.type === 'FRAME' && U(x, 'ov') === 'e')) {
+    const t = f.children.length === 1 && f.children[0].type === 'TEXT' ? f.children[0] : null;
+    if (!t || (f.layoutMode !== 'HORIZONTAL' && f.layoutMode !== 'VERTICAL')) continue;
+    const P = f.parent;
+    const flowP = !!P && (P.layoutMode === 'HORIZONTAL' || P.layoutMode === 'VERTICAL');
+    const inner = f.width - f.paddingLeft - f.paddingRight;
+    const cut = t.width > inner * 1.08 + 2;
+    const given = flowP && !hugsAxis(P, true) && (f.layoutSizingHorizontal === 'FILL' || f.layoutGrow === 1);
+    const up = [];
+    if (!given && !cut) {
+      for (let A = P; A && (A.layoutMode === 'HORIZONTAL' || A.layoutMode === 'VERTICAL'); A = A.parent) {
+        if (A.layoutWrap === 'WRAP' || /x/.test(U(A, 'scroll')) || U(A, 'slotFrame') || (A === comp && slotted) || !driven(A, true)) break;
+        up.push(A);
+        if (A === comp) break;
+      }
+    }
+    try {
+      await loadFontsOf(t);
+      if (given || cut) {
+        t.textAutoResize = 'HEIGHT'; t.layoutSizingHorizontal = 'FILL';
+      } else {
+        if (flowP) f.layoutSizingHorizontal = 'HUG';
+        else if (f.layoutMode === 'HORIZONTAL') f.primaryAxisSizingMode = 'AUTO'; else f.counterAxisSizingMode = 'AUTO';
+        t.textAutoResize = 'WIDTH_AND_HEIGHT';
+        if (f.maxWidth) t.maxWidth = Math.max(1, f.maxWidth - f.paddingLeft - f.paddingRight);
+        for (const A of up) {
+          if (A !== comp) A.layoutSizingHorizontal = 'HUG';
+          else if (A.layoutMode === 'HORIZONTAL') A.primaryAxisSizingMode = 'AUTO'; else A.counterAxisSizingMode = 'AUTO';
+        }
+      }
+      if (given || cut || f.maxWidth) { t.textTruncation = 'ENDING'; t.maxLines = 1; }
+      n++;
+    } catch (e) {}
+  }
+  return n;
+}
+// a grid of one cell (display: grid; place-items: center — an avatar's initials, a glyph in its
+// button) is auto layout aligned the same way. A grid inside an instance can't take the tracks of
+// another main: swapped from a glyph avatar to an initials one, the nested avatar kept no row and
+// its initials sat 7 px above it
+function oneCell(comp) {
+  const AL = { CENTER: 'CENTER', MAX: 'MAX' };
+  let n = 0;
+  const walk = (f) => {
+    if (f.type === 'INSTANCE' || !('children' in f)) return;
+    for (const c of f.children) walk(c);
+    if (f.layoutMode !== 'GRID') return;
+    const flow = f.children.filter((c) => c.layoutPositioning !== 'ABSOLUTE');
+    let cells = 0; try { cells = f.gridRowCount * f.gridColumnCount; } catch (e) { return; }
+    if (cells !== 1 || flow.length !== 1) return;
+    const k = flow[0];
+    const hugW = hugsGrid(f, true), hugH = hugsGrid(f, false), w = f.width, h = f.height;
+    const kw = k.layoutSizingHorizontal, kh = k.layoutSizingVertical;
+    const ah = AL[k.gridChildHorizontalAlign] || 'MIN', av = AL[k.gridChildVerticalAlign] || 'MIN';
+    try {
+      f.layoutMode = 'HORIZONTAL';
+      f.primaryAxisSizingMode = 'FIXED'; f.counterAxisSizingMode = 'FIXED'; f.resize(w, h);
+      f.primaryAxisAlignItems = ah; f.counterAxisAlignItems = av;
+      if (kw === 'FILL') k.layoutSizingHorizontal = 'FILL';
+      if (kh === 'FILL') k.layoutSizingVertical = 'FILL';
+      if (hugW) f.primaryAxisSizingMode = 'AUTO';
+      if (hugH) f.counterAxisSizingMode = 'AUTO';
+      n++;
+    } catch (e) {}
+  };
+  walk(comp);
+  return n;
+}
+// a layer laid over its whole box (position: absolute; inset: 0 — a backdrop, a canvas of dots)
+// covers it at any size: it stretches with the box instead of keeping the rep's size. Its edges
+// sit on the box's edges or on its padding (a canvas inside a team tile's padding kept the widest
+// tile's 566 px in a 310 px tile). Its picture covers the box too: the capture fit one
+// occurrence's bitmap, and fitted into a box of another shape it left bands (a canvas redraws
+// itself at every size, so cover is what the browser shows)
+function stretchOver(comp) {
+  let n = 0;
+  const near = (a, b) => Math.abs(a - b) <= 1;
+  const walk = (P) => {
+    for (const c of P.children || []) {
+      if (c.type === 'INSTANCE') continue;
+      const free = c.layoutPositioning === 'ABSOLUTE' || !P.layoutMode || P.layoutMode === 'NONE';
+      const pl = P.paddingLeft || 0, pr = P.paddingRight || 0, pt = P.paddingTop || 0, pb = P.paddingBottom || 0;
+      const covers = (near(c.x, 0) || near(c.x, pl)) && (near(c.y, 0) || near(c.y, pt))
+        && (near(c.x + c.width, P.width) || near(c.x + c.width, P.width - pr)) && (near(c.y + c.height, P.height) || near(c.y + c.height, P.height - pb));
+      if (free && 'constraints' in c && covers && c.width > 8 && c.height > 8) {
+        try { c.constraints = { horizontal: 'STRETCH', vertical: 'STRETCH' }; n++; } catch (e) {}
+        if (Array.isArray(c.fills) && c.fills.some((x) => x.type === 'IMAGE' && x.scaleMode === 'FIT')) {
+          try { c.fills = c.fills.map((x) => (x.type === 'IMAGE' && x.scaleMode === 'FIT' ? { ...x, scaleMode: 'FILL' } : x)); } catch (e) {}
+        }
+      }
+      walk(c);
+    }
+  };
+  walk(comp);
   return n;
 }
 // flexible grid tracks, from how the members' columns differ
@@ -606,8 +733,10 @@ function settle(root) {
 // a text that wraps on some screen wraps in the main (a note one line long in the rep ran past its
 // box on every screen where it takes three): drawn over several lines in a box of fixed width, or
 // across its parent's whole width, it gets auto height and fills its parent's width. A parent that
-// hugs its width keeps the text's (settle turns a fill there into a fixed width). A rep whose own
-// text wraps already has the width the page wrapped it at, and inferSizing read it from there
+// hugs its width has none to give: the text hugs its own up to the widest the page drew it, and
+// wraps past that (fixed at the rep's width, a one-digit value set every other value one
+// character per line). A rep whose own text wraps already has the width the page wrapped it at,
+// and inferSizing read it from there
 const manyLines = (t) => t.height >= (t.fontSize === figma.mixed ? 14 : t.fontSize) * 1.9;
 const spansParent = (t) => { const P = t.parent; return !!P && 'paddingLeft' in P && Math.abs(t.width - (P.width - P.paddingLeft - P.paddingRight)) <= FILL_TOL; };
 const wraps = (a) => a.type === 'TEXT' && manyLines(a) && (a.textAutoResize === 'HEIGHT' || a.textAutoResize === 'NONE' || spansParent(a));
@@ -617,10 +746,13 @@ async function wrapTexts(parts, partOf) {
     const t = partOf(b);
     if (!t || t.type !== 'TEXT' || t.textTruncation === 'ENDING' || wraps(b) || !list.some(wraps)) continue;
     const P = t.parent;
+    const widest = Math.max(t.width, ...list.filter((a) => a.type === 'TEXT').map((a) => a.width));
+    const auto = P.layoutMode && P.layoutMode !== 'NONE';
     try {
       await loadFontsOf(t);
-      t.textAutoResize = 'HEIGHT';
-      if (P.layoutMode && P.layoutMode !== 'NONE' && !(P.layoutMode === 'GRID' ? hugsGrid(P, true) : hugsAxis(P, true))) t.layoutSizingHorizontal = 'FILL';
+      if (auto && !(P.layoutMode === 'GRID' ? hugsGrid(P, true) : hugsAxis(P, true))) { t.textAutoResize = 'HEIGHT'; t.layoutSizingHorizontal = 'FILL'; }
+      else if (auto && P.layoutMode !== 'GRID') { t.textAutoResize = 'WIDTH_AND_HEIGHT'; t.maxWidth = widest; }
+      else { t.textAutoResize = 'HEIGHT'; t.resize(widest, t.height); }
       n++;
     } catch (e) {}
     // the boxes around it grow with its lines: each one up the main whose height is its content's
@@ -819,7 +951,8 @@ for (const [idx, ui] of PARAMS.ui.entries()) {
       if (lines < 2) continue;
       try { await loadFontsOf(t); const h = f.height; t.textTruncation = 'ENDING'; t.maxLines = lines; f.layoutSizingVertical = 'HUG'; f.maxHeight = h; } catch (e) {}
     }
-    p.sized = inferSizing(comp) + growItems(mapped, partOf) + await wrapTexts(mapped, partOf);
+    p.sized = inferSizing(comp) + growItems(mapped, partOf) + await wrapTexts(mapped, partOf) + hugContent(mapped, partOf, comp, !!p.spec);
+    p.sized += await ellipsize(comp, !!p.spec) + stretchOver(comp) + oneCell(comp);
     // (after the sizing pass, which reads fixed lengths from the occurrences) a picture alone in a
     // box that centers it is `object-fit: contain`: the capture sized the layer
     // to this occurrence's photo (41 px wide here, 83 there) and an instance can't resize a layer,
@@ -889,7 +1022,8 @@ for (const [idx, ui] of PARAMS.ui.entries()) {
   SET(owner, 'component', ui);
   SET(owner, 'kind', kind);
   const ref = PARAMS.codeRefs[ui];
-  owner.description = ref ? `Del prototipo: ${ref}` : 'Del prototipo.';
+  const words = PARAMS.text || { ref: 'From the prototype: {ref}', none: 'From the prototype.' };
+  owner.description = ref ? words.ref.replace('{ref}', ref) : words.none;
   cursorY = owner.y + owner.height + 160;
 
   // SLOT property: every variant's slot frame
@@ -934,15 +1068,39 @@ for (const [idx, ui] of PARAMS.ui.entries()) {
     const flowed = new Set();
     for (const n of p.optional) { const P = n.parent; if (P && !flowed.has(P.id) && flowOptional(P, n)) flowed.add(P.id); }
   }
-  // TEXT properties: the adapter's text slots, bound only inside their tagged layer
+  // TEXT properties: the adapter's text slots, bound inside their tagged layer. A slot element
+  // that held only text came out of the capture as a bare text layer, without its tag: it is the
+  // main's own text that shows one of the texts the slot showed on the page (slotText), the one at
+  // the slot's place when several do. It gets the slot's tag, so verify-slots finds it too
   const slotsJson = list[0] && U(list[0], 'slots');
+  const tagged = slotsJson ? JSON.parse(slotsJson) : {};
+  const known = (PARAMS.slotText || {})[ui] || {};
   const textProps = [];
-  if (slotsJson) {
-    for (const [slot, value] of Object.entries(JSON.parse(slotsJson))) {
+  {
+    const flatT = (x) => x.replace(/\s+/g, ' ').trim();
+    // the main's own layers only: a text inside a nested instance can't take this set's property
+    const own = (root, pred) => { let hit = null; const walk = (n) => { if (hit) return; for (const c of n.children || []) { if (c.type === 'INSTANCE' || U(c, 'slotFrame')) continue; if (pred(c)) { hit = c; return; } walk(c); } }; walk(root); return hit; };
+    const byText = (c, slot) => {
+      const k = known[slot];
+      if (!k || !k.values || !k.values.length) return null;
+      const vals = new Set(k.values), hits = [];
+      const walk = (n) => { for (const x of n.children || []) { if (x.type === 'INSTANCE' || U(x, 'slotFrame') || U(x, 'slot')) continue; if (x.type === 'TEXT' && vals.has(flatT(x.characters))) hits.push(x); walk(x); } };
+      walk(c);
+      if (hits.length === 1) return hits[0];
+      let at = k.path ? nodeAt(c, k.path) : null;
+      if (at && at.type !== 'TEXT' && 'children' in at && at.children.length === 1) at = at.children[0];
+      return hits.includes(at) ? at : null;
+    };
+    for (const slot of [...new Set([...Object.keys(tagged), ...Object.keys(known)])]) {
+      const value = tagged[slot] || (known[slot] && known[slot].values[0]) || '';
       if (!value) continue;
-      // the main's own layers only: a text inside a nested instance can't take this set's property
-      const own = (root, pred) => { let hit = null; const walk = (n) => { if (hit) return; for (const c of n.children || []) { if (c.type === 'INSTANCE' || U(c, 'slotFrame')) continue; if (pred(c)) { hit = c; return; } walk(c); } }; walk(root); return hit; };
-      const inSlot = (c) => { const box = own(c, (n) => U(n, 'slot') === slot); return box && (box.type === 'TEXT' ? box : own(box, (t) => t.type === 'TEXT')); };
+      const inSlot = (c) => {
+        const box = own(c, (n) => U(n, 'slot') === slot);
+        if (box) return box.type === 'TEXT' ? box : own(box, (t) => t.type === 'TEXT');
+        const t = byText(c, slot);
+        if (t) SET(t, 'slot', slot);
+        return t;
+      };
       const texts = created.map(inSlot).filter(Boolean);
       if (!texts.length) continue;
       try {
@@ -957,7 +1115,7 @@ for (const [idx, ui] of PARAMS.ui.entries()) {
       } catch (e) {}
     }
   }
-  report[ui] = { kind, occurrences: list.length, variants: plan.length, slot: slotted2.length ? slotName : Object.keys(cellKeys).length ? Object.keys(cellKeys).length + ' celdas' : null,
+  report[ui] = { kind, occurrences: list.length, variants: plan.length, slot: slotted2.length ? slotName : Object.keys(cellKeys).length ? Object.keys(cellKeys).length + ' cells' : null,
     booleans: Object.keys(boolKeys).length, textProps, flexGrids: plan.reduce((s, p) => s + p.flexed, 0), id: owner.id };
 }
 report._gridWarnings = gridWarnings;

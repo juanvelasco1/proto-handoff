@@ -91,6 +91,35 @@ the file by hand.
 - In a frame without auto layout, only what the browser pushed right with a gap of more than 24 px
   is anchored right (anchoring too much cut the breadcrumbs).
 - A one-line text hugs its width; a multi-line text, its height.
+- **A text that wraps on some screen wraps in the main** (`wrapTexts`): it fills its parent's
+  width; when the parent hugs its width there is none to give, so the text hugs its own up to the
+  widest the page drew it (`maxWidth`) and wraps past that. Fixed at the rep's width, a one-digit
+  value set every longer value one character per line.
+- **A box as wide as its own content on every occurrence, at widths that differ, hugs it**
+  (`hugContent`): a pill that reads "Reading" here and "Writing a reply" there, a title beside its
+  count. Kept at the rep's width it clipped every longer text. The root too, unless a slot decides
+  its sizing.
+- **Free room along a flex row is the stylesheet's** (`fx` tag, last part): an item with
+  `flex-grow` fills the row (a title that keeps its meta at the end) and an item pushed by an auto
+  margin gets an empty `spacer` before it (two items spread instead). Text-only items lose their
+  own tags in the capture, so their flex box carries them.
+- **A one-line text with an ellipsis** (`ov:e`) is cut with "…" where its box ends, in every
+  instance: the box fills its row when it did in the rep, and the text fills the box. A box that
+  hugs its text has no width to cut at.
+- **A layer laid over its whole box** (`position: absolute; inset: 0`) stretches with the box,
+  whether its edges sit on the box's edges or on its padding. Its picture covers the box: the
+  capture fit one occurrence's bitmap, and a canvas redraws itself at every size.
+- **A grid of one cell is centered auto layout** (`oneCell`): `place-items: center` around an
+  avatar's initials or a glyph. Figma can't give a nested instance the grid tracks of the main it
+  was swapped to (a glyph avatar swapped to an initials avatar kept no row, and its initials sat
+  above it); auto layout survives the swap.
+- **A turned glyph keeps its turn inside its icon component**: the component's own rotation never
+  reaches an instance.
+- **An inset ring is a stroke** (`box-shadow: inset 0 0 0 1px`, read-tags): Figma draws an inner
+  shadow only over paint, and a transparent round button lost its outline.
+- **Text slots without their tag**: a slot element that held only text comes out of the capture as
+  a bare text layer. The main's own text that shows one of the slot's texts on the page (the DOM
+  maps, `slotTextsOf`) is bound to the slot, and the one at the slot's place breaks a tie.
 - **Scroll**: the box keeps its visible height and is clipped; the rest of the chain upwards hugs
   its content. A box with horizontal scroll (a wide table in a narrow panel) leaves the rows at their
   width.

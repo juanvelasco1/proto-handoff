@@ -68,7 +68,9 @@ const DUMP = () => {
     let s = '';
     const w = (n) => { for (const c of n.childNodes) { if (c.nodeType === 3) s += c.textContent; else if (c.nodeType === 1) { const cs = getComputedStyle(c); if (cs.display !== 'none' && cs.visibility !== 'hidden') w(c); } } };
     w(e);
-    return s.replace(/\s+/g, ' ').trim().slice(0, 80);
+    // whole sentences: verify-slots writes this text into the instance (cut at 80, a card's
+    // description lost its last words)
+    return s.replace(/\s+/g, ' ').trim().slice(0, 400);
   };
   const out = [];
   const walk = (e, depth) => {

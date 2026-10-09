@@ -18,6 +18,38 @@ Fixes found by the first end-to-end run on a real prototype.
   order comes from `groups.json`.
 - The text census ignores the title block of each Screens section.
 - `fix-text-boxes.js` says which right-aligned or centered texts it could not match.
+- Components: a wrapping text in a box that hugs its width no longer collapses to one character
+  per line; boxes sized by their content on every screen hug it (pills and titles no longer clip);
+  one-line ellipsis texts end in "…"; `flex-grow` items and items pushed by an auto margin keep
+  their place in the row; full-cover absolute layers stretch; text-only slot elements get their
+  text property.
+- A rotated glyph keeps its turn inside its icon component (instances of a turned chevron pointed
+  the wrong way); existing icon components are mended in place.
+- One-cell grids (`place-items: center`: avatars, icon buttons) become centered auto layout: a
+  nested instance swapped to another grid component lost its row in Figma and its initials sat
+  above it.
+- An inset ring (`box-shadow: inset 0 0 0 1px`) becomes an inside stroke: Figma drew nothing on a
+  transparent box.
+- A growing flex item no longer loses its gap to `space-between`.
+- Flex boxes the capture left without auto layout keep the margins between their items (a row
+  7 px under its title moved up to it), keep their absolute layers where they were drawn, and get
+  the same baked-margin check as the others (a wrapping bar was 12 px taller than the browser).
+- The geometry audit counts as drift the downward offsets that Figma's whole-pixel text lines
+  cause inside the instances, as it already did for the capture's own (at most 6 px, never up or
+  sideways); the strict share is still reported.
+- Slot texts are recorded whole (they were cut at 80 characters, and the slot check wrote the cut
+  text into the instances).
+- Component descriptions follow the documentation language.
+- Colors written with `color-mix()`, `oklch()`, `lab()` and the like reach the capture: the
+  runtime writes them back as `rgb()` before capturing (a toggle's inset ring was missing).
+- A full-cover picture (a canvas of dots) covers its box in every instance instead of fitting
+  one occurrence's bitmap and leaving bands.
+
+### Changed
+
+- The contract runtime tags one-line ellipsis boxes (`ov:e`) and adds the growing and pushed items
+  to the flex tag (`fx:…:3g1a2`). Prototypes migrated before this version keep working; migrate
+  again to get the new tags.
 
 ### Added
 

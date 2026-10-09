@@ -69,6 +69,11 @@ for (const [fid, dom] of Object.entries(PARAMS.frames)) {
         const near = (v) => v >= -DRIFT[0] && v <= G + DRIFT[0];
         if (near(c[0]) && near(c[2]) && Math.abs(c[1]) <= DRIFT[1] && Math.abs(c[3]) <= DRIFT[1] && b.every((v) => Math.abs(v) <= TOL)) { drift++; continue; }
       }
+      // the same rounding inside the instances: a box under a column of texts that hug their
+      // lines sits lower than the browser drew it, never higher, and never further sideways (a
+      // chat panel's rows 2 px down under its two-line header, where the capture kept the
+      // browser's heights). Downward only, within DRIFT, its width kept: that is drift too
+      if (inside(e[0], G) && inside(e[2], G) && e[1] > TOL && e[1] <= DRIFT[1] && e[3] >= -TOL && e[3] <= DRIFT[1]) { drift++; continue; }
       off++;
       d.dx.push(e[0]); d.dy.push(e[1]); d.dw.push(e[2]); d.dh.push(e[3]);
     }

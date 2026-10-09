@@ -242,6 +242,34 @@
     var J = { 'flex-start': 's', start: 's', left: 's', normal: 's', 'flex-end': 'e', end: 'e', right: 'e', center: 'c', 'space-between': 'sb', 'space-around': 'sa', 'space-evenly': 'se' };
     return dir + wrap + ':' + Math.round(cg * 10) / 10 + ',' + Math.round(rg * 10) / 10 + ':' + (J[cs.justifyContent] || 's') + ':' + (alignCode(cs.alignItems) || 'st');
   }
+  // the items of a flex box that take its free room along the main axis: one that grows (flex: 1,
+  // a title that pushes its meta to the row's end) and one an auto margin pushes away from the
+  // item before it (a count with margin-left: auto). A text-only item comes out of the capture as
+  // a bare text layer without its tags, so its box says it: "<items>g<i>a<i>…" by item index, or
+  // '' when nothing grows or is pushed, or when the items can't be counted the way the capture
+  // lays them (a display: contents child, a bare text run)
+  function flexItems(el, cs) {
+    var col = /column/.test(cs.flexDirection);
+    if (/reverse/.test(cs.flexDirection)) return '';
+    for (var t = el.firstChild; t; t = t.nextSibling) if (t.nodeType === 3 && t.textContent.trim()) return '';
+    var items = [], out = '';
+    for (var k = el.firstElementChild; k; k = k.nextElementSibling) {
+      var ks = getComputedStyle(k);
+      if (ks.display === 'contents') return '';
+      if (ks.display === 'none' || /^(absolute|fixed)$/.test(ks.position)) continue;
+      items.push([k, ks]);
+    }
+    items.forEach(function (it, i) {
+      var m = it[0].computedStyleMap && it[0].computedStyleMap();
+      var auto = function (side) { return !!m && String(m.get('margin-' + side)) === 'auto'; };
+      if (parseFloat(it[1].flexGrow) > 0) out += 'g' + i;
+      var before = auto(col ? 'top' : 'left'), after = auto(col ? 'bottom' : 'right');
+      if (before && after) return;
+      if (before && i > 0) out += 'a' + i;
+      if (after && i < items.length - 1) out += 'a' + (i + 1);
+    });
+    return out ? items.length + out : '';
+  }
   // an item that sits apart from its siblings on the cross axis (align-self: center in a column
   // that stretches, or auto margins that take the free space, which win over align-self): Figma
   // aligns every item of an auto layout the same way, so read-tags has to know which one differs.
@@ -291,8 +319,44 @@
   }
   // room to 0.1 px, never below 0: whole-pixel client sizes can leave a hair of negative room
   function tenth(v) { return Math.max(0, Math.round(v * 10) / 10); }
+  // colors the capture can read: the browser computes color-mix() and the newer color syntaxes
+  // as color(srgb …), oklch(…), lab(…), and the capture dropped them (a toggle's inset ring of
+  // color-mix(in srgb, var(--fg) 13%, transparent) lost its outline). Each one goes back inline
+  // as the rgb() it paints
+  var MODERN = /\b(?:color|oklch|oklab|lch|lab|hwb)\((?:[^()]|\([^()]*\))*\)/;
+  var MODERN_ALL = new RegExp(MODERN.source, 'g');
+  var COLOR_PROPS = ['color', 'background-color', 'background-image', 'border-top-color', 'border-right-color',
+    'border-bottom-color', 'border-left-color', 'outline-color', 'box-shadow', 'text-shadow',
+    'text-decoration-color', 'fill', 'stroke', 'stop-color'];
+  var probe = null;
+  function rgbOf(token) {
+    var a = 1, opaque = token;
+    var cut = /\s*\/\s*([\d.e+-]+%?)\s*\)$/.exec(token);
+    if (cut) { a = /%$/.test(cut[1]) ? parseFloat(cut[1]) / 100 : parseFloat(cut[1]); opaque = token.slice(0, cut.index) + ')'; }
+    var srgb = /^color\(srgb\s+([-\d.e+]+)\s+([-\d.e+]+)\s+([-\d.e+]+)\)$/.exec(opaque), rgb;
+    if (srgb) rgb = [srgb[1], srgb[2], srgb[3]].map(function (v) { return Math.round(Math.min(1, Math.max(0, +v)) * 255); });
+    else {
+      // any other space: the browser paints it opaque on a pixel and reads the sRGB back
+      if (!probe) { var cv = document.createElement('canvas'); cv.width = cv.height = 1; probe = cv.getContext('2d', { willReadFrequently: true }); }
+      probe.clearRect(0, 0, 1, 1); probe.fillStyle = '#000'; probe.fillStyle = opaque; probe.fillRect(0, 0, 1, 1);
+      var d = probe.getImageData(0, 0, 1, 1).data; rgb = [d[0], d[1], d[2]];
+    }
+    return a >= 1 ? 'rgb(' + rgb.join(', ') + ')' : 'rgba(' + rgb.join(', ') + ', ' + Math.round(a * 1000) / 1000 + ')';
+  }
+  function plainColors(el) {
+    var cs = getComputedStyle(el);
+    for (var i = 0; i < COLOR_PROPS.length; i++) {
+      var p = COLOR_PROPS[i], v = cs.getPropertyValue(p);
+      if (!v || !MODERN.test(v) || (p === 'background-image' && !/gradient/.test(v))) continue;
+      el.style.setProperty(p, v.replace(MODERN_ALL, rgbOf), 'important');
+    }
+  }
   function tagForCapture(links) {
     resetScroll();
+    // parents first: a child that inherits its color reads the plain one
+    plainColors(document.documentElement); plainColors(document.body);
+    var each = document.body.querySelectorAll('*');
+    for (var k = 0; k < each.length; k++) plainColors(each[k]);
     var all = document.body.querySelectorAll('*');
     for (var i = 0; i < all.length; i++) {
       var el = all[i];
@@ -335,10 +399,14 @@
         if (gY > 0.5 || gX > 0.5) tags.push('gut:' + tenth(gY - gL) + ',' + tenth(gX) + (gL > 0.5 ? ',' + tenth(gL) : ''));
         // a flex box as the stylesheet wrote it (direction, wrap, gaps, how it spreads and aligns its
         // items): the capture gives a row that wraps free layout; read-tags rebuilds it from this
-        if (/flex/.test(cs.display)) tags.push('fx:' + flexCode(cs));
+        if (/flex/.test(cs.display)) { var fi = flexItems(el, cs); tags.push('fx:' + flexCode(cs) + (fi ? ':' + fi : '')); }
         // out of the flow: absolute (a), fixed (f), sticky (s) — a sticky label the capture left
         // absolute in the box that scrolls goes back to its row
         if (/^(absolute|fixed|sticky)$/.test(cs.position)) tags.push('pos:' + cs.position.charAt(0));
+        // a one-line text that ends in "…" when it runs out of room (text-overflow: ellipsis on a
+        // box that clips and doesn't wrap): the capture keeps only this occurrence's text, cut or
+        // not, and the main has to cut every other one the same way
+        if (cs.textOverflow === 'ellipsis' && !/visible/.test(cs.overflowX) && (/^(nowrap|pre)$/.test(cs.whiteSpace) || cs.textWrapMode === 'nowrap')) tags.push('ov:e');
         if (/grid/.test(cs.display)) {
           var gc = trackCodes(declared(el, 'c'), cs.gridTemplateColumns);
           if (gc) tags.push('gc:' + gc);

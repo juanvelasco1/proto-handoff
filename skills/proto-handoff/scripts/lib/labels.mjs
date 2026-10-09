@@ -22,6 +22,8 @@ const en = {
   dateLocale: 'en-CA', // YYYY-MM-DD
   parkPage: 'Previous components (temporary)',
   inbox: 'New screens',
+  // a main component's description: where it came from in the prototype
+  fromPrototype: { ref: 'From the prototype: {ref}', none: 'From the prototype.' },
   // the boards of the Components page, in this order (SKILL.md, step 1); other names go after
   stages: ['App structure', 'Navigation', 'Actions', 'Forms and search', 'Tables and lists', 'Sections and cards',
     'Charts and timelines', 'Status and feedback', 'Menus and overlays', 'Notices and detail', 'Chat', 'Identity'],
@@ -185,6 +187,7 @@ const es = {
   dateLocale: 'es', // DD/MM/YYYY
   parkPage: 'Componentes anteriores (temporal)',
   inbox: 'Pantallas nuevas',
+  fromPrototype: { ref: 'Del prototipo: {ref}', none: 'Del prototipo.' },
   stages: ['Estructura de la app', 'Navegación', 'Acciones', 'Formularios y búsqueda', 'Tablas y listas', 'Secciones y tarjetas',
     'Gráficos y líneas de tiempo', 'Estado y feedback', 'Menús y superposiciones', 'Avisos y detalle', 'Chat', 'Identidad'],
   iconsBoard: { name: 'Íconos', desc: 'Los glifos del prototipo como componentes' },

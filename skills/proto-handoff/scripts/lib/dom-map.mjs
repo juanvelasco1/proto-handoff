@@ -94,6 +94,45 @@ export function minWidthsOf(maps, adapter) {
   }
   return out;
 }
+// the texts every slot showed in the browser, and where it sat: a slot element that holds only
+// text (`<span class="kan-hc">3</span>`) comes out of the capture as a bare text layer named by
+// its content, and its tag goes with the element. build-level finds that layer again in the main
+// by its text (one of these values; the path breaks a tie) and binds it to the slot.
+//   → { ui: { slot: { values: [text, …], path } } }  (values: distinct, at most 40, each ≤ 120 chars)
+export function slotTextsOf(maps, adapter) {
+  const slotsOfUi = Object.fromEntries((adapter.components || []).filter((c) => c.slots).map((c) => [c.ui, c.slots]));
+  const cls = (sel) => sel.replace(/^[\s.>]+/, '').split(/[\s.>:[]/)[0];
+  const acc = {};
+  for (const m of maps) {
+    const N = m.nodes || [];
+    for (let i = 0; i < N.length; i++) {
+      const n = N[i], slots = n.ui && slotsOfUi[n.ui];
+      if (!slots) continue;
+      const byUi = (acc[n.ui] = acc[n.ui] || {});
+      for (const [slot, text] of Object.entries(n.slots || {})) {
+        const t = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!t || t.length > 120) continue;
+        const s = (byUi[slot] = byUi[slot] || { values: new Set(), paths: {} });
+        if (s.values.size < 40) s.values.add(t);
+      }
+      for (let j = i + 1; j < N.length && N[j].d > n.d; j++) {
+        for (const [slot, sel] of Object.entries(slots)) {
+          if (N[j].name !== cls(sel)) continue;
+          const s = (byUi[slot] = byUi[slot] || { values: new Set(), paths: {} });
+          const p = pathTo(N, i, j);
+          s.paths[p] = (s.paths[p] || 0) + 1;
+        }
+      }
+    }
+  }
+  const out = {};
+  for (const [ui, bySlot] of Object.entries(acc)) for (const [slot, s] of Object.entries(bySlot)) {
+    if (!s.values.size) continue;
+    const top = Object.entries(s.paths).sort((a, b) => b[1] - a[1])[0];
+    (out[ui] = out[ui] || {})[slot] = { values: [...s.values], path: top ? top[0].split('.').filter(Boolean).map(Number) : null };
+  }
+  return out;
+}
 // child indices from node i down to its descendant j in a flat depth-first node list
 function pathTo(N, i, j) {
   const chain = [];

@@ -26,13 +26,20 @@ capture turns that label into the layer name. **Nothing is matched by geometry.*
 | `[[section:rail]]`, `[[slot:label]]`, `[[n:class]]` | A section, a named text, any other box |
 | `[[to:screen]]` | The element that leads to another screen |
 | `[[scroll:y:8,0]]` | A scrolling box: in Figma it keeps its visible size, clipped and with scroll. After the axes, the width of its scrollbars (vertical, horizontal): the browser reserves that gap and in Figma it becomes padding, so rows do not shift |
-| `[[fx:r:8,4:sb:c]]` | A CSS flex box: direction (`r` row, `c` column, `w` if it wraps), column,row gaps, `justify-content` (`s\|e\|c\|sb\|sa\|se`) and `align-items` (`s\|e\|c\|st\|b`). The capture brings absolute boxes; with this tag the box becomes auto layout with the same distribution (wrap, space between) |
+| `[[fx:r:8,4:sb:c]]` | A CSS flex box: direction (`r` row, `c` column, `w` if it wraps), column,row gaps, `justify-content` (`s\|e\|c\|sb\|sa\|se`) and `align-items` (`s\|e\|c\|st\|b`). The capture brings absolute boxes; with this tag the box becomes auto layout with the same distribution (wrap, space between). An optional last part, `:3g1a2`, counts the in-flow items and names the ones that grow (`g`, `flex-grow`) or that an auto margin pushes away from the item before (`a`, `margin-left: auto`): a text-only item loses its own tags in the capture, so its box carries them |
+| `[[ov:e]]` | A one-line text cut with an ellipsis (`text-overflow: ellipsis`, `white-space: nowrap`, clipped). The component's text gets the same truncation, so every instance ends in "…" where the box ends |
 | `[[gut:10,0]]` | The space the box sets aside for its scrollbar (right, bottom[, left]), whether it overflows or not (`scrollbar-gutter: stable`). In Figma it becomes padding before anything is compared with its tag |
 | `[[as:c]]` | `align-self` of a flex or grid item when it differs from the parent's `align-items` (`c`, `e`, `s`, `st`). In Figma the parent aligns that way if all children agree; otherwise the item goes into an `align` frame |
 | `[[pos:s]]` | CSS `position`: `a` absolute, `f` fixed, `s` sticky. A sticky element arrives absolute on top of its placeholder and goes back to its place in the flow |
 | `[[screen:id]]` | The screen root: each capture says which screen it is (matched by name, never by order) |
 | `[[wh:474x61.3]]` | The element's box. The capture wraps some elements in frames of their own (margins, an auto margin pushing right) and repeats the tag on them: the size says which layer **is** the element; the others become `margin` (outside) or `content` (inside) |
 | `[[gc:f1,x360,f1]]`, `[[gr:*h]]` | The grid tracks **as the stylesheet wrote them**: `f` flexible (`fr`), `h` fits content (`auto`), `x` fixed in px. The capture only brings px; without this nobody knows which column grows |
+
+The runtime also writes every color the capture can't read back inline as the `rgb()` it paints:
+the browser computes `color-mix()` and the newer color syntaxes as `color(srgb …)`, `oklch(…)` or
+`lab(…)`, and the capture dropped them (an inset ring of `color-mix(in srgb, var(--fg) 13%,
+transparent)` lost its outline). Text, background, border, outline, shadow, gradient and SVG
+fill and stroke colors are covered; the page looks the same.
 
 ## The adapter (`adapter.json`)
 

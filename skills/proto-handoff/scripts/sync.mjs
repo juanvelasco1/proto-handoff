@@ -31,7 +31,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { run as runTpl, installPlan, installCheck } from './lib/fill.mjs';
 import { levelsFromMaps } from './lib/levels.mjs';
-import { slotsOf, minWidthsOf } from './lib/dom-map.mjs';
+import { slotsOf, minWidthsOf, slotTextsOf } from './lib/dom-map.mjs';
 import { labelsFor, orderStages } from './lib/labels.mjs';
 import { pixelShare } from './lib/pixel-diff.mjs';
 
@@ -186,6 +186,7 @@ return out;
     const levels = levelsOf(path.join(next, state.maps), new Set(screensInRun));
     const allMaps = readdirSync(path.join(next, state.maps)).filter((x) => /^\d.*\.json$/.test(x)).map((f) => JSON.parse(readFileSync(path.join(next, state.maps, f), 'utf8')));
     const minW = minWidthsOf(allMaps, adapter);
+    const slotText = slotTextsOf(allMaps, adapter);
     for (const L of Object.keys(levels).sort((a, b) => a - b)) {
       const ui = levels[L].sort();
       const kinds = Object.fromEntries(ui.map((u) => [u, kindOf[u] || 'component']));
@@ -201,7 +202,8 @@ return out;
         const part = ui.slice(i, i + per);
         put(`L${L}-build-${String.fromCharCode(97 + k)}${per === 1 ? '-' + part[0] : ''}.js`, fill('build-level.js', { ui: part, kinds, lists: pl, screens: frameIds, componentsPage: state.pages.components,
           codeRefs: Object.fromEntries(part.map((u) => [u, codeRefs[u]])), keep: 5, origin: [0, 0], budgetMs: 25000,
-          minW: Object.fromEntries(part.filter((u) => minW[u]).map((u) => [u, minW[u]])) }));
+          minW: Object.fromEntries(part.filter((u) => minW[u]).map((u) => [u, minW[u]])),
+          slotText: Object.fromEntries(part.filter((u) => slotText[u]).map((u) => [u, slotText[u]])), text: LBL.fromPrototype }));
       }
       chunks(frameIds).forEach((c, i) => put(`L${L}-swap-${String.fromCharCode(97 + i)}.js`,
         fill('swap-level.js', { ui, kinds, lists: pl, screens: c, componentsPage: state.pages.components, budgetMs: 25000 })));
